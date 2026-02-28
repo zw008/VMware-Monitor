@@ -19,6 +19,9 @@ from rich.console import Console
 from rich.table import Table
 
 from vmware_monitor.config import CONFIG_DIR
+from vmware_monitor.notify.audit import AuditLogger
+
+_audit = AuditLogger()
 
 app = typer.Typer(
     name="vmware-monitor",
@@ -49,13 +52,14 @@ ConfigOption = Annotated[
 
 
 def _get_connection(target: str | None, config_path: Path | None = None):
-    """Helper to get a pyVmomi connection."""
+    """Helper to get a pyVmomi connection.  Returns (si, cfg, target_name)."""
     from vmware_monitor.config import load_config
     from vmware_monitor.connection import ConnectionManager
 
     cfg = load_config(config_path)
     mgr = ConnectionManager(cfg)
-    return mgr.connect(target), cfg
+    target_name = target or cfg.default_target.name
+    return mgr.connect(target), cfg, target_name
 
 
 # ─── Inventory ────────────────────────────────────────────────────────────────
@@ -66,8 +70,9 @@ def inventory_vms(target: TargetOption = None, config: ConfigOption = None) -> N
     """List all virtual machines."""
     from vmware_monitor.ops.inventory import list_vms
 
-    si, _ = _get_connection(target, config)
+    si, _, tgt = _get_connection(target, config)
     vms = list_vms(si)
+    _audit.log_query(target=tgt, resource="virtual_machines", query_type="list_vms")
     table = Table(title="Virtual Machines")
     table.add_column("Name", style="cyan")
     table.add_column("Power")
@@ -93,8 +98,9 @@ def inventory_hosts(target: TargetOption = None, config: ConfigOption = None) ->
     """List all ESXi hosts."""
     from vmware_monitor.ops.inventory import list_hosts
 
-    si, _ = _get_connection(target, config)
+    si, _, tgt = _get_connection(target, config)
     hosts = list_hosts(si)
+    _audit.log_query(target=tgt, resource="esxi_hosts", query_type="list_hosts")
     table = Table(title="ESXi Hosts")
     table.add_column("Name", style="cyan")
     table.add_column("State")
@@ -120,8 +126,9 @@ def inventory_datastores(
     """List all datastores."""
     from vmware_monitor.ops.inventory import list_datastores
 
-    si, _ = _get_connection(target, config)
+    si, _, tgt = _get_connection(target, config)
     stores = list_datastores(si)
+    _audit.log_query(target=tgt, resource="datastores", query_type="list_datastores")
     table = Table(title="Datastores")
     table.add_column("Name", style="cyan")
     table.add_column("Type")
@@ -148,8 +155,9 @@ def inventory_clusters(
     """List all clusters."""
     from vmware_monitor.ops.inventory import list_clusters
 
-    si, _ = _get_connection(target, config)
+    si, _, tgt = _get_connection(target, config)
     clusters = list_clusters(si)
+    _audit.log_query(target=tgt, resource="clusters", query_type="list_clusters")
     table = Table(title="Clusters")
     table.add_column("Name", style="cyan")
     table.add_column("Hosts", justify="right")
@@ -173,8 +181,9 @@ def health_alarms(target: TargetOption = None, config: ConfigOption = None) -> N
     """Show active alarms."""
     from vmware_monitor.ops.health import get_active_alarms
 
-    si, _ = _get_connection(target, config)
+    si, _, tgt = _get_connection(target, config)
     alarms = get_active_alarms(si)
+    _audit.log_query(target=tgt, resource="alarms", query_type="get_active_alarms")
     if not alarms:
         console.print("[green]No active alarms.[/]")
         return
@@ -204,8 +213,9 @@ def health_events(
     """Show recent events."""
     from vmware_monitor.ops.health import get_recent_events
 
-    si, _ = _get_connection(target, config)
+    si, _, tgt = _get_connection(target, config)
     events = get_recent_events(si, hours=hours, severity=severity)
+    _audit.log_query(target=tgt, resource="events", query_type="get_recent_events")
     if not events:
         console.print(f"[green]No events above '{severity}' in the last {hours}h.[/]")
         return
@@ -230,8 +240,9 @@ def vm_info(
     """Show detailed info for a VM (read-only)."""
     from vmware_monitor.ops.vm_info import get_vm_info
 
-    si, _ = _get_connection(target, config)
+    si, _, tgt = _get_connection(target, config)
     info = get_vm_info(si, name)
+    _audit.log_query(target=tgt, resource=name, query_type="get_vm_info")
     for k, v in info.items():
         console.print(f"  [cyan]{k}:[/] {v}")
 
@@ -245,8 +256,9 @@ def vm_snapshot_list(
     """List VM snapshots (read-only)."""
     from vmware_monitor.ops.vm_info import list_snapshots
 
-    si, _ = _get_connection(target, config)
+    si, _, tgt = _get_connection(target, config)
     snaps = list_snapshots(si, vm_name)
+    _audit.log_query(target=tgt, resource=vm_name, query_type="list_snapshots")
     if not snaps:
         console.print("[yellow]No snapshots found.[/]")
         return
@@ -264,7 +276,8 @@ def scan_now(target: TargetOption = None, config: ConfigOption = None) -> None:
     from vmware_monitor.scanner.alarm_scanner import scan_alarms
     from vmware_monitor.scanner.log_scanner import scan_logs
 
-    si, cfg = _get_connection(target, config)
+    si, cfg, tgt = _get_connection(target, config)
+    _audit.log_query(target=tgt, resource="scan", query_type="scan_now")
     console.print("[bold]Running scan...[/]")
     alarm_results = scan_alarms(si)
     log_results = scan_logs(si, cfg.scanner)

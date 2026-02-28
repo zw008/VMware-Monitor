@@ -30,8 +30,16 @@ VMware Monitor manages connections to vCenter Server and ESXi hosts. Follow thes
 
 - **NEVER** hardcode passwords in scripts, config files, or command-line arguments
 - **ALWAYS** store passwords in `~/.vmware-monitor/.env` with `chmod 600` (owner-only access)
-- **ALWAYS** use `ConnectionManager.from_config()` for connections
+- **ALWAYS** use `ConnectionManager.from_config()` for connections — it loads credentials securely from `.env`
 - Passwords are never displayed in output, logs, or error messages
+
+### Password Environment Variables
+
+```
+VMWARE_{TARGET_NAME}_PASSWORD
+# Replace hyphens with underscores, UPPERCASE
+# Example: target "home-esxi" → VMWARE_HOME_ESXI_PASSWORD
+```
 
 ### Code-Level Safety
 
@@ -51,9 +59,11 @@ The following are considered security issues:
 - Authentication bypass
 - Unauthorized access to vCenter/ESXi operations
 - Command injection via CLI inputs
+- Insecure default configurations
 - Destructive code being introduced into this read-only repository
 
 The following are **not** considered security issues:
 
 - Misconfigured user permissions on vCenter/ESXi (outside this tool's control)
 - Vulnerabilities in upstream dependencies (report to the respective project)
+- Issues requiring physical access to the host machine

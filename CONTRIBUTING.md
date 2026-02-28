@@ -69,6 +69,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 - **NEVER** hardcode passwords or credentials
 - **NEVER** log or print sensitive information
 - **ALWAYS** use `ConnectionManager.from_config()` for connections
+- **ALWAYS** store credentials in `~/.vmware-monitor/.env` with `chmod 600`
 
 ### Testing
 
