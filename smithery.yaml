@@ -1,0 +1,18 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      config_path:
+        type: string
+        description: Path to VMware Monitor config file
+        default: "~/.vmware-monitor/config.yaml"
+  commandFunction:
+    |-
+    (config) => ({
+      command: "python",
+      args: ["-m", "mcp_server"],
+      env: {
+        VMWARE_MONITOR_CONFIG: config.config_path || ""
+      }
+    })

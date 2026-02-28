@@ -1,0 +1,166 @@
+"""MCP server wrapping VMware Monitor read-only operations.
+
+Exposes ONLY read-only inventory, health, and VM info tools via the
+Model Context Protocol (stdio transport).
+
+NO destructive operations: no power_on, power_off, create, delete,
+reconfigure, snapshot-create/revert/delete, clone, or migrate.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from pathlib import Path
+from typing import Any
+
+from mcp.server.fastmcp import FastMCP
+
+from vmware_monitor.config import load_config
+from vmware_monitor.connection import ConnectionManager
+from vmware_monitor.ops.health import get_active_alarms, get_recent_events
+from vmware_monitor.ops.inventory import (
+    list_clusters,
+    list_datastores,
+    list_hosts,
+    list_vms,
+)
+from vmware_monitor.ops.vm_info import get_vm_info
+
+logger = logging.getLogger(__name__)
+
+mcp = FastMCP(
+    "vmware-monitor",
+    description=(
+        "VMware vCenter/ESXi read-only monitoring. "
+        "Query inventory, check health/alarms, and view VM info. "
+        "No destructive operations — code-level enforced."
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# Connection helper
+# ---------------------------------------------------------------------------
+
+_conn_mgr: ConnectionManager | None = None
+
+
+def _get_connection(target: str | None = None) -> Any:
+    """Return a pyVmomi ServiceInstance, lazily initialising the manager."""
+    global _conn_mgr  # noqa: PLW0603
+    if _conn_mgr is None:
+        config_path_str = os.environ.get("VMWARE_MONITOR_CONFIG")
+        config_path = Path(config_path_str) if config_path_str else None
+        config = load_config(config_path)
+        _conn_mgr = ConnectionManager(config)
+    return _conn_mgr.connect(target)
+
+
+# ---------------------------------------------------------------------------
+# Inventory tools (read-only)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def list_virtual_machines(target: str | None = None) -> list[dict]:
+    """List all virtual machines with name, power state, CPU, memory, guest OS, and IP.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return list_vms(si)
+
+
+@mcp.tool()
+def list_esxi_hosts(target: str | None = None) -> list[dict]:
+    """List all ESXi hosts with CPU cores, memory, version, VM count, and uptime.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return list_hosts(si)
+
+
+@mcp.tool()
+def list_all_datastores(target: str | None = None) -> list[dict]:
+    """List all datastores with capacity, free space, type, and VM count.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return list_datastores(si)
+
+
+@mcp.tool()
+def list_all_clusters(target: str | None = None) -> list[dict]:
+    """List all clusters with host count, DRS/HA status, and resource totals.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return list_clusters(si)
+
+
+# ---------------------------------------------------------------------------
+# Health tools (read-only)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def get_alarms(target: str | None = None) -> list[dict]:
+    """Get all active/triggered alarms across the VMware inventory.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return get_active_alarms(si)
+
+
+@mcp.tool()
+def get_events(
+    hours: int = 24,
+    severity: str = "warning",
+    target: str | None = None,
+) -> list[dict]:
+    """Get recent vCenter/ESXi events filtered by severity.
+
+    Args:
+        hours: How many hours back to query (default 24).
+        severity: Minimum severity level: "critical", "warning", or "info".
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return get_recent_events(si, hours=hours, severity=severity)
+
+
+# ---------------------------------------------------------------------------
+# VM info tool (read-only)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+def vm_info(vm_name: str, target: str | None = None) -> dict:
+    """Get detailed information about a specific VM (CPU, memory, disks, NICs, snapshots).
+
+    Args:
+        vm_name: Exact name of the virtual machine.
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return get_vm_info(si, vm_name)
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    """Run the MCP server over stdio."""
+    logging.basicConfig(level=logging.INFO)
+    mcp.run(transport="stdio")

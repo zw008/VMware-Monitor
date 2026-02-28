@@ -1,0 +1,43 @@
+# VMware Monitor Configuration
+# Copy to ~/.vmware-monitor/config.yaml and edit
+#
+# Passwords: copy .env.example to ~/.vmware-monitor/.env and fill in passwords
+#   cp .env.example ~/.vmware-monitor/.env
+#   chmod 600 ~/.vmware-monitor/.env
+# See .env.example for naming convention details
+
+targets:
+  # vCenter Server
+  - name: prod-vcenter
+    host: vcenter-prod.example.com
+    port: 443
+    username: administrator@vsphere.local
+    # Set password via env: export VMWARE_PROD_VCENTER_PASSWORD=xxx
+    type: vcenter
+    verify_ssl: false
+
+  # Standalone ESXi host
+  - name: lab-esxi
+    host: 192.168.1.100
+    port: 443
+    username: root
+    # Set password via env: export VMWARE_LAB_ESXI_PASSWORD=xxx
+    type: esxi
+    verify_ssl: false
+
+# Scanner daemon settings
+scanner:
+  enabled: true
+  interval_minutes: 15
+  log_types:
+    - vpxd
+    - hostd
+    - vmkernel
+  severity_threshold: warning  # critical, warning, or info
+  lookback_hours: 1
+
+# Notification settings
+notify:
+  log_file: ~/.vmware-monitor/scan.log
+  webhook_url: ""  # Slack, Discord, or generic webhook URL
+  webhook_timeout: 10
