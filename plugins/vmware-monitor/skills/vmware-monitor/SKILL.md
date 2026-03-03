@@ -4,42 +4,95 @@ description: >
   VMware vCenter/ESXi read-only monitoring skill. Code-level enforced safety —
   no destructive operations exist in this codebase. Query inventory, check
   health/alarms/events, view VM info and snapshots, scan logs.
+installer:
+  kind: uv
+  package: vmware-monitor
 ---
 
 # VMware Monitor (Read-Only)
 
-Safe, read-only VMware vCenter and ESXi monitoring skill.
+Safe, read-only VMware vCenter and ESXi monitoring skill. Query your entire VMware infrastructure using natural language through any AI coding assistant — without risk of accidental modifications.
 
-> **Code-level safety**: Independent repository (`zw008/VMware-Monitor`). No destructive code paths exist.
+> **Code-level safety**: This is an independent repository (`zw008/VMware-Monitor`). No destructive code paths exist — no power off, delete, create, reconfigure, snapshot-create/revert/delete, clone, or migrate functions are present in the codebase. For full operations, use the separate [VMware-AIops](https://github.com/zw008/VMware-AIops) repo.
 
-## First Interaction
+## Quick Install
 
-Ask which environment (vCenter/ESXi) and target to monitor. Guide config setup if needed.
-
-## Commands (Read-Only ONLY)
+Works with Claude Code, Cursor, Codex, Gemini CLI, Trae, Kimi, and 30+ AI agents:
 
 ```bash
-vmware-monitor inventory vms|hosts|datastores|clusters [--target <name>]
-vmware-monitor health alarms|events [--target <name>]
+# Via ClawHub (recommended)
+clawhub install vmware-monitor
+
+# Via Skills.sh
+npx skills add zw008/VMware-Monitor
+```
+
+## First Interaction: Environment Selection
+
+When the user starts a conversation, **always ask first**:
+
+1. **Which environment** do they want to monitor? (vCenter Server or standalone ESXi host)
+2. **Which target** from their config? (e.g., `prod-vcenter`, `lab-esxi`)
+3. If no config exists yet, guide them through creating `~/.vmware-monitor/config.yaml`
+
+## Available Commands (Read-Only ONLY)
+
+```bash
+# Inventory
+vmware-monitor inventory vms [--target <name>]
+vmware-monitor inventory hosts [--target <name>]
+vmware-monitor inventory datastores [--target <name>]
+vmware-monitor inventory clusters [--target <name>]
+
+# Health
+vmware-monitor health alarms [--target <name>]
+vmware-monitor health events [--hours 24] [--severity warning]
+
+# VM Info (read-only)
 vmware-monitor vm info <vm-name>
 vmware-monitor vm snapshot-list <vm-name>
+
+# Scanning & Daemon
 vmware-monitor scan now [--target <name>]
 vmware-monitor daemon start|stop|status
 ```
 
-## NOT Available (do not exist in codebase)
+## FORBIDDEN Operations — DO NOT EXIST IN CODEBASE
 
-- power-on/off, create, delete, reconfigure
-- snapshot-create/revert/delete, clone, migrate
+- `vm power-on/off`, `vm create/delete/reconfigure`
+- `vm snapshot-create/revert/delete`, `vm clone/migrate`
 
-For these → `npx skills add zw008/VMware-AIops`
+Direct users to **VMware-AIops** (`npx skills add zw008/VMware-AIops`) for these.
 
 ## Setup
 
 ```bash
-git clone https://github.com/zw008/VMware-Monitor.git && cd VMware-Monitor
-pip install -e .
+# 1. Install via uv (recommended) or pip
+uv tool install vmware-monitor
+# Or: pip install vmware-monitor
+
+# 2. Configure
 mkdir -p ~/.vmware-monitor
-cp config.example.yaml ~/.vmware-monitor/config.yaml
-cp .env.example ~/.vmware-monitor/.env && chmod 600 ~/.vmware-monitor/.env
+vmware-monitor init  # generates config.yaml and .env templates
+chmod 600 ~/.vmware-monitor/.env
+# Edit ~/.vmware-monitor/config.yaml and .env with your target details
 ```
+
+### Development Install
+
+```bash
+git clone https://github.com/zw008/VMware-Monitor.git
+cd VMware-Monitor
+uv venv && source .venv/bin/activate
+uv pip install -e .
+```
+
+## Safety
+
+- READ-ONLY: No state modifications possible at code level
+- Audit: All queries logged to `~/.vmware-monitor/audit.log`
+- Credentials: `.env` file with `chmod 600`, never hardcoded
+
+## License
+
+MIT

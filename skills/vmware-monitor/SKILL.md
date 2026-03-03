@@ -17,7 +17,13 @@ Safe, read-only VMware vCenter and ESXi monitoring skill. Query your entire VMwa
 
 ## Quick Install
 
+Works with Claude Code, Cursor, Codex, Gemini CLI, Trae, Kimi, and 30+ AI agents:
+
 ```bash
+# Via ClawHub (recommended)
+clawhub install vmware-monitor
+
+# Via Skills.sh
 npx skills add zw008/VMware-Monitor
 ```
 
