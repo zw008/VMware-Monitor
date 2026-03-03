@@ -435,6 +435,22 @@ vmware-monitor vm info my-vm --target home-esxi
 
 ---
 
+## Update / Upgrade
+
+Already installed? Re-run the install command for your channel to get the latest version:
+
+| Install Channel | Update Command |
+|----------------|----------------|
+| ClawHub | `clawhub install vmware-monitor` |
+| Skills.sh | `npx skills add zw008/VMware-Monitor` |
+| Claude Code Plugin | `/plugin marketplace add zw008/VMware-Monitor` |
+| Git clone | `cd VMware-Monitor && git pull origin main && uv pip install -e .` |
+| uv | `uv tool install vmware-monitor --force` |
+
+Check your current version: `vmware-monitor --version`
+
+---
+
 ## Chinese Cloud Models
 
 For users in China who prefer domestic cloud APIs or have limited access to overseas services.
