@@ -43,16 +43,67 @@ npx skills add zw008/VMware-Monitor
 /vmware-monitor:vmware-monitor
 ```
 
+## Usage Mode: MCP First, CLI Fallback
+
+**Default: MCP mode** — vmware-monitor runs as an MCP Server registered in Claude Code. All monitoring queries go through MCP tool calls directly, no manual CLI needed.
+
+**Fallback: CLI mode** — only when MCP connection fails (server crash, config error, etc.), switch to CLI commands via `vmware-monitor` in the terminal.
+
+### MCP Tools (7 tools, all read-only)
+
+| MCP Tool | Description | Equivalent CLI |
+|----------|-------------|----------------|
+| `list_virtual_machines` | List all VMs | `vmware-monitor inventory vms` |
+| `list_esxi_hosts` | List ESXi hosts | `vmware-monitor inventory hosts` |
+| `list_all_datastores` | List datastores | `vmware-monitor inventory datastores` |
+| `list_all_clusters` | List clusters | `vmware-monitor inventory clusters` |
+| `get_alarms` | Active alarms | `vmware-monitor health alarms` |
+| `get_events` | Recent events | `vmware-monitor health events` |
+| `vm_info` | VM details | `vmware-monitor vm info <name>` |
+
+All tools accept optional `target` parameter (e.g., `"home-esxi"`, `"prod-vcenter"`).
+
+### MCP Setup (Claude Code)
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "vmware-monitor": {
+      "command": "/path/to/VMware-Monitor/.venv/bin/python",
+      "args": ["-m", "mcp_server"],
+      "cwd": "/path/to/VMware-Monitor",
+      "env": {
+        "VMWARE_MONITOR_CONFIG": "~/.vmware-monitor/config.yaml"
+      }
+    }
+  }
+}
+```
+
+### When to Fall Back to CLI
+
+- MCP server fails to start or crashes mid-session
+- Need daemon/scan features not exposed via MCP (`scan now`, `daemon start`)
+- Debugging connection issues (CLI gives more verbose output)
+
+```bash
+# Activate venv and run CLI
+source /path/to/VMware-Monitor/.venv/bin/activate
+vmware-monitor inventory vms --target home-esxi
+```
+
 ## Architecture
 
 ```
 User (Natural Language)
   ↓
 AI CLI Tool (Claude Code / Gemini / Codex / Aider / Continue / Trae / Kimi)
-  ↓ Reads SKILL.md / AGENTS.md / rules
   ↓
-vmware-monitor CLI (read-only)
-  ↓ pyVmomi (vSphere SOAP API)
+  ├─ MCP mode (default): MCP Server (stdio) ──→ pyVmomi ──→ vSphere API
+  │
+  └─ CLI fallback: vmware-monitor CLI ──→ pyVmomi ──→ vSphere API
   ↓
 vCenter Server ──→ ESXi Clusters ──→ VMs
     or

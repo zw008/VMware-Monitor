@@ -105,7 +105,11 @@ def get_recent_events(
         time=vim.event.EventFilterSpec.ByTime(beginTime=begin, endTime=now)
     )
 
-    events = event_mgr.QueryEvents(filter_spec)
+    try:
+        events = event_mgr.QueryEvents(filter_spec)
+    except Exception:
+        # Standalone ESXi does not support QueryEvents
+        return []
     min_level = SEVERITY_ORDER.get(severity, 1)
 
     results = []
