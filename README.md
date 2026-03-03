@@ -120,7 +120,9 @@ ESXi Standalone ──→ VMs
 | **Code-Level Isolation** | Independent repository — zero destructive functions in codebase |
 | **Audit Trail** | All queries logged to `~/.vmware-monitor/audit.log` (JSONL) |
 | **Password Protection** | `.env` file loading with permission check (warn if not 600) |
-| **SSL Self-signed Support** | `disableSslCertValidation` for ESXi 8.0 self-signed certs |
+| **SSL Self-signed Support** | `disableSslCertValidation` — only for ESXi with self-signed certs in isolated labs; production should use CA-signed certificates |
+| **Prompt Injection Protection** | vSphere event messages and host logs are truncated, sanitized, and wrapped in boundary markers |
+| **Webhook Data Scope** | Sends monitoring summaries to user-configured URLs only — no third-party services by default |
 
 ### What's NOT Included (By Design)
 

@@ -1,10 +1,24 @@
 """MCP server wrapping VMware Monitor read-only operations.
 
-Exposes ONLY read-only inventory, health, and VM info tools via the
-Model Context Protocol (stdio transport).
+This module exposes **read-only** VMware vCenter/ESXi monitoring tools via
+the Model Context Protocol (MCP) using stdio transport.  Each ``@mcp.tool()``
+function delegates to the corresponding function in the ``vmware_monitor``
+package (ops.inventory, ops.health, ops.vm_info).
 
-NO destructive operations: no power_on, power_off, create, delete,
+**NO destructive operations exist in this module or anywhere in the
+vmware-monitor codebase**: no power_on, power_off, create, delete,
 reconfigure, snapshot-create/revert/delete, clone, or migrate.
+
+Security considerations
+-----------------------
+* **All tools are read-only**: Every tool only queries vSphere state;
+  none can modify VMs, hosts, or configuration.
+* **Credential handling**: Credentials are loaded from environment
+  variables / ``.env`` file — never passed via MCP messages.
+* **Transport**: Uses stdio transport (local only); no network listener.
+
+Source: https://github.com/zw008/VMware-Monitor
+License: MIT
 """
 
 from __future__ import annotations
@@ -14,8 +28,10 @@ import os
 from pathlib import Path
 from typing import Any
 
+# MCP SDK — Model Context Protocol server framework
 from mcp.server.fastmcp import FastMCP
 
+# Internal VMware monitoring modules (all read-only operations)
 from vmware_monitor.config import load_config
 from vmware_monitor.connection import ConnectionManager
 from vmware_monitor.ops.health import get_active_alarms, get_recent_events

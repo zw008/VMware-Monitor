@@ -219,7 +219,7 @@ Direct users to **VMware-AIops** (`clawhub install vmware-aiops`) for these.
 | Code-Level Isolation | Independent repository — zero destructive functions in codebase |
 | Audit Trail | All queries logged to `~/.vmware-monitor/audit.log` (JSONL) |
 | Password Protection | `.env` file loading with permission check (warn if not 600) |
-| SSL Self-signed Support | `disableSslCertValidation` for ESXi 8.0 self-signed certs |
+| SSL Self-signed Support | `disableSslCertValidation` — **only** for ESXi hosts with self-signed certificates in isolated lab/home environments. Production environments should use CA-signed certificates with full TLS verification enabled. |
 
 ## Version Compatibility
 
@@ -292,6 +292,15 @@ cd VMware-Monitor
 uv venv && source .venv/bin/activate
 uv pip install -e .
 ```
+
+## Security
+
+- **Read-Only by Design**: This is an independent repository with zero destructive code paths. No power off, delete, create, reconfigure, or migrate functions exist in the codebase.
+- **TLS Verification**: Enabled by default. The `disableSslCertValidation` option exists solely for ESXi hosts using self-signed certificates (common in home labs). In production, always use CA-signed certificates with full TLS verification.
+- **Credentials**: Loaded exclusively from environment variables via `.env` file (`chmod 600`). Never passed in CLI arguments, config files, or MCP messages.
+- **Webhook Data Scope**: Webhook notifications send monitoring summaries to **user-configured URLs only** (Slack, Discord, or any HTTP endpoint you control). No data is sent to third-party services by default.
+- **Prompt Injection Protection**: All vSphere-sourced content (event messages, host logs) is truncated, stripped of control characters, and wrapped in boundary markers before output.
+- **Code Review**: We recommend reviewing the source code and commit history before deploying in production. Run in an isolated environment for initial evaluation.
 
 ## License
 
