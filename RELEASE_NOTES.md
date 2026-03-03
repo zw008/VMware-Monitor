@@ -1,5 +1,23 @@
 # Release Notes
 
+## v0.1.1 (2026-03-03)
+
+### Security Hardening: Prompt Injection Protection
+
+- **Boundary markers**: All vSphere-sourced content (event messages, host logs) is now wrapped in explicit boundary markers (`[VSPHERE_EVENT]...[/VSPHERE_EVENT]`, `[VSPHERE_HOST_LOG]...[/VSPHERE_HOST_LOG]`) so downstream LLM agents can distinguish trusted output from untrusted vSphere data.
+
+- **Comprehensive control character sanitization**: Replaced simple null-byte removal with regex-based stripping of all C0/C1 control characters (except `\n` and `\t`). Prevents prompt injection via embedded control sequences in vSphere event messages.
+
+- **MCP server documentation**: Added comprehensive module docstring to `mcp_server/server.py` with security considerations (all-read-only tool classification, credential handling, transport security) to resolve Socket "Obfuscated File" audit flag.
+
+- **Security section in SKILL.md**: Added explicit Security section covering read-only design, TLS verification, credential handling, webhook data scope, prompt injection protection, and code review guidance.
+
+- **README safety table updates**: Added Prompt Injection Protection and Webhook Data Scope rows to safety features table in both English and Chinese READMEs.
+
+**Files updated**: `vmware_monitor/scanner/log_scanner.py`, `mcp_server/server.py`, `skills/vmware-monitor/SKILL.md`, `plugins/.../SKILL.md`, `README.md`, `README-CN.md`
+
+---
+
 ## v0.1.0 (2026-02-28)
 
 **Initial release — Read-only VMware monitoring with code-level safety.**
@@ -33,7 +51,7 @@ Extracted from [VMware-AIops](https://github.com/zw008/VMware-AIops) as an indep
 - **Code-level isolation**: No destructive functions or pyVmomi write API calls in the codebase
 - **Automated verification**: `test_no_destructive_code.py` checks 40+ destructive patterns
 - **PR template**: Read-Only Verification checklist required for all pull requests
-- **Credential security**: `.env` with `chmod 600`, `ConnectionManager.from_config()`, zero password exposure
+- **Credential security**: `.env` with `chmod 600`, config-based connections, zero password exposure
 
 ### Configuration
 
