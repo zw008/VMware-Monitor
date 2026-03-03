@@ -6,6 +6,7 @@ English | [中文](README-CN.md)
 
 > **Why a separate repository?** VMware Monitor is fully independent from [VMware-AIops](https://github.com/zw008/VMware-AIops). Safety is enforced at the **code level**: no power off, delete, create, reconfigure, snapshot-create/revert/delete, clone, or migrate functions exist in this codebase. Not just prompt constraints — zero destructive code paths.
 
+[![ClawHub](https://img.shields.io/badge/ClawHub-vmware--monitor-orange)](https://clawhub.ai/skills/vmware-monitor)
 [![Skills.sh](https://img.shields.io/badge/Skills.sh-Install-blue)](https://skills.sh/zw008/VMware-Monitor)
 [![Claude Code Marketplace](https://img.shields.io/badge/Claude_Code-Marketplace-blueviolet)](https://github.com/zw008/VMware-Monitor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -15,6 +16,10 @@ English | [中文](README-CN.md)
 Works with Claude Code, Cursor, Codex, Gemini CLI, Trae, and 30+ AI agents:
 
 ```bash
+# Via ClawHub (recommended)
+clawhub install vmware-monitor
+
+# Via Skills.sh
 npx skills add zw008/VMware-Monitor
 ```
 
@@ -561,8 +566,8 @@ VMware-Monitor/
 
 | Repository | Description | Install |
 |------------|-------------|---------|
-| **[VMware-Monitor](https://github.com/zw008/VMware-Monitor)** (this repo) | Read-only monitoring — code-level safety | `npx skills add zw008/VMware-Monitor` |
-| **[VMware-AIops](https://github.com/zw008/VMware-AIops)** | Full operations — monitoring + VM lifecycle | `npx skills add zw008/VMware-AIops` |
+| **[VMware-Monitor](https://github.com/zw008/VMware-Monitor)** (this repo) | Read-only monitoring — code-level safety | `clawhub install vmware-monitor` |
+| **[VMware-AIops](https://github.com/zw008/VMware-AIops)** | Full operations — monitoring + VM lifecycle | `clawhub install vmware-aiops` |
 
 > **Choosing between them**: Use **VMware-Monitor** if you only need read-only monitoring with zero risk of accidental changes. Use **VMware-AIops** if you need full operations (create, delete, power, snapshot, clone, migrate).
 

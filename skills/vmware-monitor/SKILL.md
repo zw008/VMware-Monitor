@@ -4,7 +4,9 @@ description: >
   VMware vCenter/ESXi read-only monitoring skill. Code-level enforced safety —
   no destructive operations exist in this codebase. Query inventory, check
   health/alarms/events, view VM info and snapshots, scan logs.
-  Independently installable: npx skills add zw008/VMware-Monitor
+installer:
+  kind: uv
+  package: vmware-monitor
 ---
 
 # VMware Monitor (Read-Only)
@@ -59,15 +61,24 @@ Direct users to **VMware-AIops** (`npx skills add zw008/VMware-AIops`) for these
 ## Setup
 
 ```bash
+# 1. Install via uv (recommended) or pip
+uv tool install vmware-monitor
+# Or: pip install vmware-monitor
+
+# 2. Configure
+mkdir -p ~/.vmware-monitor
+vmware-monitor init  # generates config.yaml and .env templates
+chmod 600 ~/.vmware-monitor/.env
+# Edit ~/.vmware-monitor/config.yaml and .env with your target details
+```
+
+### Development Install
+
+```bash
 git clone https://github.com/zw008/VMware-Monitor.git
 cd VMware-Monitor
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
-
-mkdir -p ~/.vmware-monitor
-cp config.example.yaml ~/.vmware-monitor/config.yaml
-cp .env.example ~/.vmware-monitor/.env
-chmod 600 ~/.vmware-monitor/.env
+uv venv && source .venv/bin/activate
+uv pip install -e .
 ```
 
 ## Safety

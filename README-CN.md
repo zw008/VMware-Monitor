@@ -6,6 +6,7 @@
 
 > **为什么独立仓库？** VMware Monitor 完全独立于 [VMware-AIops](https://github.com/zw008/VMware-AIops)。安全性在**代码级别**保障：代码库中不存在关机、删除、创建、调整配置、快照创建/恢复/删除、克隆、迁移等函数。不仅仅是提示词约束 — 而是零破坏性代码路径。
 
+[![ClawHub](https://img.shields.io/badge/ClawHub-vmware--monitor-orange)](https://clawhub.ai/skills/vmware-monitor)
 [![Skills.sh](https://img.shields.io/badge/Skills.sh-Install-blue)](https://skills.sh/zw008/VMware-Monitor)
 [![Claude Code Marketplace](https://img.shields.io/badge/Claude_Code-Marketplace-blueviolet)](https://github.com/zw008/VMware-Monitor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -15,6 +16,10 @@
 支持 Claude Code、Cursor、Codex、Gemini CLI、Trae 等 30+ AI 工具：
 
 ```bash
+# 通过 ClawHub 安装（推荐）
+clawhub install vmware-monitor
+
+# 通过 Skills.sh 安装
 npx skills add zw008/VMware-Monitor
 ```
 
@@ -245,10 +250,10 @@ VMware-Monitor/
 
 ## 相关项目
 
-| 仓库 | 说明 |
-|------|------|
-| [VMware-Monitor](https://github.com/zw008/VMware-Monitor)（本仓库） | 只读监控 — 代码级安全 |
-| [VMware-AIops](https://github.com/zw008/VMware-AIops) | 完整运维 — 监控 + VM 生命周期 |
+| 仓库 | 说明 | 安装 |
+|------|------|------|
+| [VMware-Monitor](https://github.com/zw008/VMware-Monitor)（本仓库） | 只读监控 — 代码级安全 | `clawhub install vmware-monitor` |
+| [VMware-AIops](https://github.com/zw008/VMware-AIops) | 完整运维 — 监控 + VM 生命周期 | `clawhub install vmware-aiops` |
 
 ## 问题反馈与贡献
 
