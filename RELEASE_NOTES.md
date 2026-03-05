@@ -1,5 +1,19 @@
 # Release Notes
 
+## v0.1.2 (2026-03-05)
+
+### Usage Mode Optimization
+
+- **Platform-aware calling priority**: Claude Code and Cursor users get MCP-first experience (structured tool calls, no interactive confirmation needed). Aider, Codex, Gemini CLI, and local models (Ollama) default to CLI mode for lower context overhead and universal compatibility.
+
+- **Install order update**: Skills.sh (`npx skills add`) is now the primary install method; ClawHub as secondary option.
+
+- **MCP load tip**: Added tip for MCP-native tools to check MCP server status (`/mcp`) before use.
+
+**Files updated**: `skills/vmware-monitor/SKILL.md`, `plugins/.../SKILL.md`, `README.md`, `README-CN.md`
+
+---
+
 ## v0.1.1 (2026-03-03)
 
 ### Security Hardening: Prompt Injection Protection

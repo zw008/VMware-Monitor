@@ -16,11 +16,11 @@
 支持 Claude Code、Cursor、Codex、Gemini CLI、Trae 等 30+ AI 工具：
 
 ```bash
-# 通过 ClawHub 安装（推荐）
-clawhub install vmware-monitor
-
 # 通过 Skills.sh 安装
 npx skills add zw008/VMware-Monitor
+
+# 通过 ClawHub 安装
+clawhub install vmware-monitor
 ```
 
 ### Claude Code 快速安装

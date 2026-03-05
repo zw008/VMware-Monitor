@@ -28,11 +28,11 @@ Safe, read-only VMware vCenter and ESXi monitoring skill. Query your entire VMwa
 Works with Claude Code, Cursor, Codex, Gemini CLI, Trae, Kimi, and 30+ AI agents:
 
 ```bash
-# Via ClawHub (recommended)
-clawhub install vmware-monitor
-
 # Via Skills.sh
 npx skills add zw008/VMware-Monitor
+
+# Via ClawHub
+clawhub install vmware-monitor
 ```
 
 ### Claude Code
@@ -43,64 +43,44 @@ npx skills add zw008/VMware-Monitor
 /vmware-monitor:vmware-monitor
 ```
 
-## Usage Mode: MCP First, CLI Fallback
+## Usage Mode
 
-**Default: MCP mode** — vmware-monitor runs as an MCP Server registered in Claude Code. All monitoring queries go through MCP tool calls directly, no manual CLI needed.
+Choose the best mode based on your AI tool:
 
-**Fallback: CLI mode** — only when MCP connection fails (server crash, config error, etc.), switch to CLI commands via `vmware-monitor` in the terminal.
+| Platform | Recommended Mode | Why |
+|----------|-----------------|-----|
+| Claude Code, Cursor | **MCP** | Structured tool calls, no interactive confirmation needed, seamless experience |
+| Aider, Codex, Gemini CLI, Continue | **CLI** | Lightweight, low context overhead, universal compatibility |
+| Ollama + local models | **CLI** | Minimal context usage, works with any model size |
 
-### MCP Tools (7 tools, all read-only)
+### Calling Priority
 
-| MCP Tool | Description | Equivalent CLI |
-|----------|-------------|----------------|
-| `list_virtual_machines` | List all VMs | `vmware-monitor inventory vms` |
-| `list_esxi_hosts` | List ESXi hosts | `vmware-monitor inventory hosts` |
-| `list_all_datastores` | List datastores | `vmware-monitor inventory datastores` |
-| `list_all_clusters` | List clusters | `vmware-monitor inventory clusters` |
-| `get_alarms` | Active alarms | `vmware-monitor health alarms` |
-| `get_events` | Recent events | `vmware-monitor health events` |
-| `vm_info` | VM details | `vmware-monitor vm info <name>` |
+- **MCP-native tools** (Claude Code, Cursor): MCP first, CLI fallback
+- **All other tools**: CLI first (MCP not needed)
 
-All tools accept optional `target` parameter (e.g., `"home-esxi"`, `"prod-vcenter"`).
+> **Tip**: If your AI tool supports MCP, check whether `vmware-monitor` MCP server is loaded (`/mcp` in Claude Code). If not, configure it first — MCP provides the best hands-free experience.
 
-### MCP Direct Calling Pattern (Default)
+### CLI Examples
 
-When this skill is activated, **always use direct Python import** to call MCP tools:
+```bash
+# Activate venv first
+source /path/to/VMware-Monitor/.venv/bin/activate
 
-```python
-# Set working directory and use the project venv
-# cd /path/to/VMware-Monitor
+# Inventory
+vmware-monitor inventory vms --target home-esxi
+vmware-monitor inventory hosts --target home-esxi
 
-from mcp_server.server import (
-    list_virtual_machines,
-    list_esxi_hosts,
-    list_all_datastores,
-    list_all_clusters,
-    get_alarms,
-    get_events,
-    vm_info,
-)
+# Health
+vmware-monitor health alarms --target home-esxi
+vmware-monitor health events --hours 24 --severity warning --target home-esxi
 
-# Example: List all VMs
-result = list_virtual_machines(target='home-esxi')
-
-# Example: Get alarms
-alarms = get_alarms(target='home-vcenter')
-
-# Example: Get VM details
-info = vm_info(vm_name='my-vm', target='home-esxi')
-
-# Example: Get events (last 24h, warning+)
-events = get_events(hours=24, severity='warning', target='home-esxi')
+# VM info (read-only)
+vmware-monitor vm info my-vm --target home-esxi
 ```
 
-**Calling priority:**
-1. ✅ Direct import from `mcp_server.server` (fastest, default)
-2. ⚠️ CLI fallback: `vmware-monitor inventory vms` (when import fails)
+### MCP Mode (Optional)
 
-### MCP Setup (Claude Code)
-
-Add to `~/.claude/settings.json`:
+For Claude Code / Cursor users who prefer structured tool calls, add to `~/.claude/settings.json`:
 
 ```json
 {
@@ -117,28 +97,18 @@ Add to `~/.claude/settings.json`:
 }
 ```
 
-### When to Fall Back to CLI
-
-- MCP server fails to start or crashes mid-session
-- Need daemon/scan features not exposed via MCP (`scan now`, `daemon start`)
-- Debugging connection issues (CLI gives more verbose output)
-
-```bash
-# Activate venv and run CLI
-source /path/to/VMware-Monitor/.venv/bin/activate
-vmware-monitor inventory vms --target home-esxi
-```
+MCP exposes 7 read-only tools: `list_virtual_machines`, `list_esxi_hosts`, `list_all_datastores`, `list_all_clusters`, `get_alarms`, `get_events`, `vm_info`. All accept optional `target` parameter.
 
 ## Architecture
 
 ```
 User (Natural Language)
   ↓
-AI CLI Tool (Claude Code / Gemini / Codex / Aider / Continue / Trae / Kimi)
+AI Tool (Claude Code / Aider / Gemini / Codex / Cursor / Trae / Kimi)
   ↓
-  ├─ MCP mode (default): MCP Server (stdio) ──→ pyVmomi ──→ vSphere API
+  ├─ CLI mode (default): vmware-monitor CLI ──→ pyVmomi ──→ vSphere API
   │
-  └─ CLI fallback: vmware-monitor CLI ──→ pyVmomi ──→ vSphere API
+  └─ MCP mode (optional): MCP Server (stdio) ──→ pyVmomi ──→ vSphere API
   ↓
 vCenter Server ──→ ESXi Clusters ──→ VMs
     or

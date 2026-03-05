@@ -16,11 +16,11 @@ English | [中文](README-CN.md)
 Works with Claude Code, Cursor, Codex, Gemini CLI, Trae, and 30+ AI agents:
 
 ```bash
-# Via ClawHub (recommended)
-clawhub install vmware-monitor
-
 # Via Skills.sh
 npx skills add zw008/VMware-Monitor
+
+# Via ClawHub
+clawhub install vmware-monitor
 ```
 
 ### Claude Code Plugin Install
