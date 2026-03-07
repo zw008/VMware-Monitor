@@ -7,6 +7,7 @@ description: >
 installer:
   kind: uv
   package: vmware-monitor
+metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmware-monitor"],"config":["~/.vmware-monitor/config.yaml"]},"primaryEnv":"VMWARE_MONITOR_CONFIG"}}
 ---
 
 # VMware Monitor (Read-Only)
