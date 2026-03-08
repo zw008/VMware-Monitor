@@ -135,6 +135,27 @@ ESXi 独立主机 ──→ VM
 | **MCP Server** | ✅ MCP 协议 | `mcp_server/` | 任意 MCP 客户端 |
 | **Python CLI** | ✅ 独立运行 | N/A | N/A |
 
+### MCP Server 集成（本地 Agent）
+
+vmware-monitor MCP Server 可接入**任何 MCP 兼容的 Agent 或工具**。配置模板见 [`examples/mcp-configs/`](examples/mcp-configs/)。所有 8 个工具均为**只读** — 代码级安全保障。
+
+| Agent / 工具 | 本地模型支持 | 配置模板 |
+|-------------|:----------:|---------|
+| **[Goose](https://github.com/block/goose)** | ✅ Ollama, LM Studio | [`goose.json`](examples/mcp-configs/goose.json) |
+| **[LocalCowork](https://github.com/Liquid4All/localcowork)** | ✅ 完全离线 | [`localcowork.json`](examples/mcp-configs/localcowork.json) |
+| **[mcp-agent](https://github.com/lastmile-ai/mcp-agent)** | ✅ Ollama, vLLM | [`mcp-agent.yaml`](examples/mcp-configs/mcp-agent.yaml) |
+| **VS Code Copilot** | — | [`.vscode/mcp.json`](examples/mcp-configs/vscode-copilot.json) |
+| **Cursor** | — | [`cursor.json`](examples/mcp-configs/cursor.json) |
+| **Continue** | ✅ Ollama | [`continue.yaml`](examples/mcp-configs/continue.yaml) |
+| **Claude Code** | — | [`claude-code.json`](examples/mcp-configs/claude-code.json) |
+
+**完全本地运行**（无需云端 API）：
+
+```bash
+# Aider + Ollama + vmware-monitor（通过 AGENTS.md）
+aider --conventions codex-skill/AGENTS.md --model ollama/qwen2.5-coder:32b
+```
+
 ---
 
 ## 安装

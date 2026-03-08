@@ -1,0 +1,10 @@
+{
+  "vmware-monitor": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "cwd": "/path/to/VMware-Monitor",
+    "env": {
+      "VMWARE_MONITOR_CONFIG": "~/.vmware-monitor/config.yaml"
+    }
+  }
+}
