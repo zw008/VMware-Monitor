@@ -100,6 +100,8 @@ For Claude Code / Cursor users who prefer structured tool calls, add to `~/.clau
 
 MCP exposes 7 read-only tools: `list_virtual_machines`, `list_esxi_hosts`, `list_all_datastores`, `list_all_clusters`, `get_alarms`, `get_events`, `vm_info`. All accept optional `target` parameter.
 
+`list_virtual_machines` supports `limit`, `sort_by`, `power_state`, `fields` for compact context in large inventories.
+
 ## Architecture
 
 ```
@@ -239,8 +241,15 @@ aider --conventions codex-skill/AGENTS.md --model ollama/qwen2.5-coder:32b
 ## CLI Reference
 
 ```bash
+# Diagnostics
+vmware-monitor doctor [--skip-auth]
+
+# MCP Config Generator
+vmware-monitor mcp-config generate --agent <goose|cursor|claude-code|continue|vscode-copilot|localcowork|mcp-agent>
+vmware-monitor mcp-config list
+
 # Inventory
-vmware-monitor inventory vms [--target <name>]
+vmware-monitor inventory vms [--target <name>] [--limit <n>] [--sort-by name|cpu|memory_mb|power_state] [--power-state poweredOn|poweredOff]
 vmware-monitor inventory hosts [--target <name>]
 vmware-monitor inventory datastores [--target <name>]
 vmware-monitor inventory clusters [--target <name>]
