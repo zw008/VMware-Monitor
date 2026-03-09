@@ -107,6 +107,7 @@ ESXi 独立主机 ──→ VM
 | **SSL 自签名** | 仅用于 ESXi 自签名证书的隔离实验环境；生产环境应使用 CA 签名证书 |
 | **Prompt 注入防护** | vSphere 事件消息和主机日志在输出前进行截断、控制字符清理和边界标记（`[VSPHERE_EVENT]`/`[VSPHERE_HOST_LOG]`）包裹 |
 | **Webhook 数据范围** | **默认禁用**。启用后仅向用户自配置的 URL 发送告警摘要，payload 不含凭据、IP 或 PII |
+| **生产环境推荐** | AI Agent 可能误解上下文并执行非预期的破坏性操作 — 已有真实案例表明 AI 驱动工具删除了生产数据库和整个环境。VMware-Monitor 消除此风险：代码中不存在任何破坏性代码路径。仅在开发/实验环境使用 [VMware-AIops](https://github.com/zw008/VMware-AIops) |
 
 ### 不包含的操作（设计如此）
 

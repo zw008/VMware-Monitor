@@ -124,6 +124,7 @@ ESXi Standalone ──→ VMs
 | **SSL Self-signed Support** | `disableSslCertValidation` — only for ESXi with self-signed certs in isolated labs; production should use CA-signed certificates |
 | **Prompt Injection Protection** | vSphere event messages and host logs are truncated, sanitized, and wrapped in boundary markers |
 | **Webhook Data Scope** | Sends monitoring summaries to user-configured URLs only — no third-party services by default |
+| **Production Recommended** | AI agents can misinterpret context and execute unintended destructive operations — real-world incidents have shown AI-driven tools deleting production databases and entire environments. VMware-Monitor eliminates this risk: no destructive code paths exist. Use [VMware-AIops](https://github.com/zw008/VMware-AIops) only in dev/lab environments |
 
 ### What's NOT Included (By Design)
 
