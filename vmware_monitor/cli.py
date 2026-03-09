@@ -66,14 +66,25 @@ def _get_connection(target: str | None, config_path: Path | None = None):
 
 
 @inventory_app.command("vms")
-def inventory_vms(target: TargetOption = None, config: ConfigOption = None) -> None:
-    """List all virtual machines."""
+def inventory_vms(
+    target: TargetOption = None,
+    config: ConfigOption = None,
+    limit: Annotated[int | None, typer.Option("--limit", "-n", help="Max VMs to show")] = None,
+    sort_by: Annotated[str, typer.Option("--sort-by", help="Sort by: name|cpu|memory_mb|power_state")] = "name",
+    power_state: Annotated[str | None, typer.Option("--power-state", help="Filter: poweredOn|poweredOff|suspended")] = None,
+) -> None:
+    """List virtual machines."""
     from vmware_monitor.ops.inventory import list_vms
 
     si, _, tgt = _get_connection(target, config)
-    vms = list_vms(si)
+    vms = list_vms(si, limit=limit, sort_by=sort_by, power_state=power_state)
     _audit.log_query(target=tgt, resource="virtual_machines", query_type="list_vms")
-    table = Table(title="Virtual Machines")
+    title = "Virtual Machines"
+    if power_state:
+        title += f" [{power_state}]"
+    if limit:
+        title += f" (top {limit})"
+    table = Table(title=title)
     table.add_column("Name", style="cyan")
     table.add_column("Power")
     table.add_column("CPUs", justify="right")
@@ -338,6 +349,97 @@ def daemon_stop() -> None:
         console.print(f"[red]Failed to stop daemon: {e}[/]")
         return
     pid_file.unlink(missing_ok=True)
+
+
+@app.command("doctor")
+def doctor_cmd(
+    skip_auth: Annotated[
+        bool,
+        typer.Option("--skip-auth", help="Skip vSphere authentication check (faster)"),
+    ] = False,
+) -> None:
+    """Check environment, config, connectivity, and daemon status."""
+    from vmware_monitor.doctor import run_doctor
+    raise typer.Exit(run_doctor(skip_auth=skip_auth))
+
+
+# ─── MCP Config Generator ────────────────────────────────────────────────────
+
+mcp_config_app = typer.Typer(help="Generate MCP server config for local AI agents.")
+app.add_typer(mcp_config_app, name="mcp-config")
+
+_AGENT_TEMPLATES = {
+    "goose": "goose.json",
+    "cursor": "cursor.json",
+    "claude-code": "claude-code.json",
+    "continue": "continue.yaml",
+    "vscode-copilot": "vscode-copilot.json",
+    "localcowork": "localcowork.json",
+    "mcp-agent": "mcp-agent.yaml",
+}
+
+_TEMPLATES_DIR = Path(__file__).parent.parent / "examples" / "mcp-configs"
+
+
+@mcp_config_app.command("generate")
+def mcp_config_generate(
+    agent: Annotated[
+        str,
+        typer.Option(
+            "--agent", "-a",
+            help="Target agent: goose, cursor, claude-code, continue, vscode-copilot, localcowork, mcp-agent",
+        ),
+    ],
+    install_path: Annotated[
+        str | None,
+        typer.Option("--path", help="Absolute path to VMware-Monitor install dir"),
+    ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Write config to this file path"),
+    ] = None,
+) -> None:
+    """Generate MCP server config for a local AI agent.
+
+    Example:
+        vmware-monitor mcp-config generate --agent goose
+    """
+    agent_lower = agent.lower()
+    if agent_lower not in _AGENT_TEMPLATES:
+        available = ", ".join(sorted(_AGENT_TEMPLATES.keys()))
+        console.print(f"[red]Unknown agent '{agent}'. Available: {available}[/]")
+        raise typer.Exit(1)
+
+    template_file = _TEMPLATES_DIR / _AGENT_TEMPLATES[agent_lower]
+    if not template_file.exists():
+        console.print(f"[red]Template file not found: {template_file}[/]")
+        raise typer.Exit(1)
+
+    content = template_file.read_text()
+
+    if install_path:
+        content = content.replace("/path/to/VMware-Monitor", str(Path(install_path).resolve()))
+    else:
+        pkg_dir = Path(__file__).parent.parent.resolve()
+        if (pkg_dir / "pyproject.toml").exists():
+            content = content.replace("/path/to/VMware-Monitor", str(pkg_dir))
+
+    if output:
+        output.write_text(content)
+        console.print(f"[green]Config written to: {output}[/]")
+    else:
+        console.print(content)
+
+
+@mcp_config_app.command("list")
+def mcp_config_list() -> None:
+    """List all supported agents."""
+    table = Table(title="Supported Agents")
+    table.add_column("Agent", style="cyan")
+    table.add_column("Template File")
+    for agent_name, template in sorted(_AGENT_TEMPLATES.items()):
+        table.add_row(agent_name, template)
+    console.print(table)
 
 
 if __name__ == "__main__":
