@@ -517,8 +517,19 @@ aider --conventions codex-skill/AGENTS.md \
 ## CLI Reference
 
 ```bash
+# Diagnostics
+vmware-monitor doctor                   # Check environment, config, connectivity
+vmware-monitor doctor --skip-auth       # Skip vSphere auth check (faster)
+
+# MCP Config Generator
+vmware-monitor mcp-config generate --agent goose        # Generate config for Goose
+vmware-monitor mcp-config generate --agent claude-code  # Generate config for Claude Code
+vmware-monitor mcp-config list                          # List all supported agents
+
 # Inventory
 vmware-monitor inventory vms [--target <name>]
+vmware-monitor inventory vms --limit 10 --sort-by memory_mb   # Top 10 VMs by memory
+vmware-monitor inventory vms --power-state poweredOn           # Only powered-on VMs
 vmware-monitor inventory hosts [--target <name>]
 vmware-monitor inventory datastores [--target <name>]
 vmware-monitor inventory clusters [--target <name>]

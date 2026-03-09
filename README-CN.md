@@ -230,8 +230,19 @@ vmware-monitor health alarms --target home-esxi
 ## CLI 命令参考
 
 ```bash
+# 环境诊断
+vmware-monitor doctor                   # 检查环境、配置、连通性
+vmware-monitor doctor --skip-auth       # 跳过 vSphere 认证检查（更快）
+
+# MCP 配置生成
+vmware-monitor mcp-config generate --agent goose        # 生成 Goose 配置
+vmware-monitor mcp-config generate --agent claude-code  # 生成 Claude Code 配置
+vmware-monitor mcp-config list                          # 列出所有支持的 Agent
+
 # 资源清单
 vmware-monitor inventory vms|hosts|datastores|clusters [--target <name>]
+vmware-monitor inventory vms --limit 10 --sort-by memory_mb  # 按内存排序 Top 10
+vmware-monitor inventory vms --power-state poweredOn         # 只显示开机 VM
 
 # 健康检查
 vmware-monitor health alarms [--target <name>]
