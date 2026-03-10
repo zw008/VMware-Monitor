@@ -23,6 +23,19 @@ npx skills add zw008/VMware-Monitor
 clawhub install vmware-monitor
 ```
 
+### PyPI 安装（无需访问 GitHub）
+
+```bash
+# 通过 uv 安装（推荐）
+uv tool install vmware-monitor
+
+# 或通过 pip 安装
+pip install vmware-monitor
+
+# 国内镜像加速
+pip install vmware-monitor -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
 ### Claude Code 快速安装
 
 ```bash
