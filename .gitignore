@@ -18,3 +18,5 @@ config.yaml
 .claude/
 .trae/
 skills-lock.json
+.mcpregistry_*
+mcp-publisher
