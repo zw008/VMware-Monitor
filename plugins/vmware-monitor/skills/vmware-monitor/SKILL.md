@@ -7,7 +7,7 @@ description: >
 installer:
   kind: uv
   package: vmware-monitor
-metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmware-monitor"],"config":["~/.vmware-monitor/config.yaml"]},"primaryEnv":"VMWARE_MONITOR_CONFIG","homepage":"https://github.com/zw008/VMware-Monitor"}}
+metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmware-monitor"],"config":["~/.vmware-monitor/config.yaml"]},"primaryEnv":"VMWARE_MONITOR_CONFIG","homepage":"https://github.com/zw008/VMware-Monitor","emoji":"📊","os":["macos","linux"]}}
 ---
 
 # VMware Monitor (Read-Only)
@@ -26,14 +26,17 @@ Safe, read-only VMware vCenter and ESXi monitoring skill. Query your entire VMwa
 
 ## Quick Install
 
-Works with Claude Code, Cursor, Codex, Gemini CLI, Trae, Kimi, and 30+ AI agents:
+All install methods fetch from the same source: [github.com/zw008/VMware-Monitor](https://github.com/zw008/VMware-Monitor) (MIT licensed). We recommend reviewing the source code before installing.
 
 ```bash
-# Via Skills.sh
+# Via Skills.sh (fetches from GitHub)
 npx skills add zw008/VMware-Monitor
 
-# Via ClawHub
+# Via ClawHub (fetches from ClawHub registry snapshot of GitHub)
 clawhub install vmware-monitor
+
+# Via PyPI (recommended for version pinning)
+uv tool install vmware-monitor==0.1.2
 ```
 
 ### Claude Code
@@ -272,16 +275,22 @@ vmware-monitor daemon status
 ## Setup
 
 ```bash
-# 1. Install via uv (recommended) or pip
+# 1. Install from PyPI (source: github.com/zw008/VMware-Monitor)
 uv tool install vmware-monitor
-# Or: pip install vmware-monitor
 
-# 2. Configure
+# 2. Verify installation source
+vmware-monitor --version  # confirms installed version
+
+# 3. Configure
 mkdir -p ~/.vmware-monitor
 vmware-monitor init  # generates config.yaml and .env templates
 chmod 600 ~/.vmware-monitor/.env
 # Edit ~/.vmware-monitor/config.yaml and .env with your target details
 ```
+
+### What Gets Installed
+
+The `vmware-monitor` package installs a read-only Python CLI binary and its dependencies (pyVmomi, Click, Rich, APScheduler, python-dotenv). No background services, daemons, or system-level changes are made during installation. The scheduled scanner (`daemon start`) only runs when explicitly started by the user.
 
 ### Development Install
 
@@ -295,9 +304,14 @@ uv pip install -e .
 ## Security
 
 - **Read-Only by Design**: This is an independent repository with zero destructive code paths. No power off, delete, create, reconfigure, or migrate functions exist in the codebase.
-- **Source Code**: Fully open source at [github.com/zw008/VMware-Monitor](https://github.com/zw008/VMware-Monitor). The `uv` installer (`vmware-monitor`) installs from this repository. We recommend reviewing the source code and commit history before deploying in production.
-- **TLS Verification**: Enabled by default. The `disableSslCertValidation` option exists solely for ESXi hosts using self-signed certificates (common in home labs). In production, always use CA-signed certificates with full TLS verification.
-- **Config File Contents**: `~/.vmware-monitor/config.yaml` stores target hostnames, ports, and a reference to the `.env` file. It does **not** contain passwords or tokens. All secrets (vCenter username/password) are stored exclusively in `~/.vmware-monitor/.env` (`chmod 600`), loaded via `python-dotenv`. We recommend using a least-privilege read-only vCenter service account.
+- **Source Code**: Fully open source at [github.com/zw008/VMware-Monitor](https://github.com/zw008/VMware-Monitor) (MIT). The `uv` installer fetches the `vmware-monitor` package from PyPI, which is built from this GitHub repository. We recommend reviewing the source code and commit history before deploying in production.
+- **TLS Verification**: Enabled by default. The `disableSslCertValidation` option exists solely for ESXi hosts using self-signed certificates in isolated lab/home environments. In production, always use CA-signed certificates with full TLS verification.
+- **Credentials & Config**: This skill requires the following secrets, all stored in `~/.vmware-monitor/.env` (`chmod 600`, loaded via `python-dotenv`):
+  - `VSPHERE_USER` — vCenter/ESXi service account username (read-only account recommended)
+  - `VSPHERE_PASSWORD` — service account password
+  - (Optional) Webhook URLs for Slack/Discord notifications
+
+  The config file `~/.vmware-monitor/config.yaml` stores only target hostnames, ports, and a reference to the `.env` file — it does **not** contain passwords or tokens. The env var `VMWARE_MONITOR_CONFIG` points to this YAML file.
 - **Webhook Data Scope**: Webhook notifications are **disabled by default**. When enabled, they send monitoring summaries (alarm counts, event types, host status) to **user-configured URLs only** (Slack, Discord, or any HTTP endpoint you control). No data is sent to third-party services. Webhook payloads contain no credentials, IPs, or personally identifiable information — only aggregated alert metadata.
 - **Prompt Injection Protection**: All vSphere-sourced content (event messages, host logs) is truncated, stripped of control characters, and wrapped in boundary markers (`[VSPHERE_EVENT]`/`[VSPHERE_HOST_LOG]`) before output to prevent prompt injection when consumed by LLM agents.
 
