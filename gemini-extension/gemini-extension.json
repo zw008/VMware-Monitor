@@ -1,6 +1,6 @@
 {
   "name": "vmware-monitor",
-  "version": "0.2.0",
+  "version": "1.0.13",
   "description": "VMware vCenter/ESXi read-only monitoring (code-level enforced safety)",
   "contextFileName": "GEMINI.md"
 }
