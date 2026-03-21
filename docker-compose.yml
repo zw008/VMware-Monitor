@@ -1,0 +1,13 @@
+services:
+  vmware-monitor-mcp:
+    build: .
+    image: vmware-monitor:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      # Mount your config and credentials
+      - ~/.vmware-monitor:/root/.vmware-monitor:ro
+    environment:
+      - VMWARE_MONITOR_CONFIG=/root/.vmware-monitor/config.yaml
+      # Add your password env vars here, e.g.:
+      # - VMWARE_MY_VCENTER_PASSWORD=secret
