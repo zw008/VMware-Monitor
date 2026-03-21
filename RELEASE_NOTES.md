@@ -1,5 +1,31 @@
 # Release Notes
 
+## v1.2.0 (2026-03-21)
+
+### mcp-config install — Auto-write Agent Config / 自动写入 Agent 配置
+
+- **`vmware-monitor mcp-config install --agent <name>`** — Directly writes MCP server config into the target agent's config file.
+  直接将 MCP server 配置写入目标 Agent 的配置文件，无需手动编辑 JSON/YAML。
+  - Supports: claude-code, cursor, goose, continue, vscode, localcowork, mcp-agent / 支持 7 种 Agent
+  - JSON merge (non-destructive) + auto-backup on conflict / JSON 合并（非破坏性）+ 冲突时自动备份
+
+### Docker One-Command Launch / Docker 一键启动
+
+- **Dockerfile + docker-compose.yml** — Run MCP server without installing Python or venv.
+  无需安装 Python 或 venv，一条命令启动 MCP Server。
+  ```bash
+  docker compose up -d
+  ```
+
+### Cursor Integration Guide / Cursor 集成文档
+
+- **`docs/integrations/cursor.md`** — Full guide for using vmware-monitor as a read-only Cursor MCP server.
+  完整的 Cursor 集成指南，包含自动安装、手动配置、8 个只读工具说明和排障指南。
+
+**PyPI**: `uv tool install vmware-monitor==1.2.0`
+
+---
+
 ## v1.1.0 (2026-03-21)
 
 > **Version unification release / 版本统一发布**
