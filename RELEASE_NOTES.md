@@ -1,5 +1,36 @@
 # Release Notes
 
+## v1.1.0 (2026-03-21)
+
+> **Version unification release / 版本统一发布**
+> All platforms (PyPI, GitHub Release, MCP Registry, Skills.sh, ClawHub, Smithery) now share the same version number starting from v1.1.0.
+> 所有平台从 v1.1.0 起统一版本号。
+
+### Doctor & MCP Config Generator / 诊断与配置生成
+
+- `vmware-monitor doctor` — 8-check environment diagnostic / 8 项环境诊断
+- `vmware-monitor mcp-config generate --agent <name>` — Generate config for 7 local AI agents / 为 7 种本地 AI Agent 生成配置
+
+### Inventory Enhancements / 资源清单增强
+
+- `list_vms` with limit/sort_by/power_state/fields filtering / 支持过滤、排序、字段选择
+- Auto-tiered response for large inventories (>50 VMs) / 大规模环境自动精简返回
+
+### Security Hardening / 安全加固
+
+- Prompt injection protection with boundary markers / Prompt 注入防护（边界标记）
+- Bandit security scan: 0 issues / Bandit 安全扫描零问题
+
+### Platform & Integration / 平台与集成
+
+- MCP Registry, Skills.sh, ClawHub, Smithery, Glama, mcp.so, Cline Marketplace published
+- Local agent config templates for 7 agents (Claude Code, Cursor, Goose, LocalCowork, mcp-agent, Continue, VS Code Copilot)
+- Ollama end-to-end setup guide
+
+**PyPI**: `uv tool install vmware-monitor==1.1.0`
+
+---
+
 ## v0.1.2 (2026-03-05)
 
 ### Usage Mode Optimization
