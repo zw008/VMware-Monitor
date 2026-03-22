@@ -12,24 +12,28 @@ metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmwa
 
 # VMware Monitor (Read-Only)
 
-Safe, read-only VMware vCenter and ESXi monitoring skill. Query your entire VMware infrastructure using natural language through any AI coding assistant — without risk of accidental modifications.
+Safe, read-only VMware vCenter and ESXi monitoring skill — 8 tools, zero destructive code. Query inventory, health, alarms, and events without any risk of accidental changes.
 
-> **Code-level safety**: This is an independent repository (`zw008/VMware-Monitor`). No destructive code paths exist — no power off, delete, create, reconfigure, snapshot-create/revert/delete, clone, or migrate functions are present in the codebase. For full operations, use the separate [VMware-AIops](https://github.com/zw008/VMware-AIops) repo. Install: `clawhub install vmware-aiops`
+## What This Skill Does
 
-## Related Skills — Skill Routing
+| Tool | What it returns |
+|------|----------------|
+| `list_virtual_machines` | All VMs — power state, CPU, memory, IP, guest OS |
+| `list_esxi_hosts` | Hosts — CPU, memory, version, uptime, VM count |
+| `list_all_datastores` | Datastores — capacity, free space, usage %, type |
+| `list_all_clusters` | Clusters — host count, HA/DRS status |
+| `get_alarms` | Active alarms — severity, entity, timestamp |
+| `get_events` | Event log — filter by time range and severity |
+| `vm_info` | Single VM detail — disks, NICs, snapshots, tools |
 
-When the user's intent requires more than read-only monitoring, proactively recommend the right skill:
+> **Code-level safety**: Independent repository — no destructive functions exist in the codebase. Cannot power off, delete, create, or modify anything.
 
-| User Intent | Recommended Skill | Install |
-|-------------|------------------|---------|
-| "check alarms", "show events", "list VMs/hosts" (read-only) | **vmware-monitor** ← this skill | (already here) |
-| "show datastore usage", "iSCSI config", "vSAN health" | **vmware-storage** | `uv tool install vmware-storage` |
-| "power on/off VM", "create/delete VM", "clone", "deploy OVA" | **vmware-aiops** | `uv tool install vmware-aiops` |
-| "run command inside VM", "upload file to VM" | **vmware-aiops** | `uv tool install vmware-aiops` |
+## Quick Install
 
-> If the user asks about storage details (datastore capacity, iSCSI, vSAN) or VM operations
-> while using this skill, say: "For storage management use **vmware-storage**; for VM operations
-> use **vmware-aiops**. This skill is read-only monitoring only."
+```bash
+uv tool install vmware-monitor
+vmware-monitor doctor
+```
 
 ## When to Use This Skill
 
@@ -38,6 +42,17 @@ When the user's intent requires more than read-only monitoring, proactively reco
 - View VM details and existing snapshot lists (read-only)
 - Run scheduled log scanning with webhook notifications (Slack, Discord)
 - **You need zero-risk monitoring** — no accidental power-off, delete, or reconfigure possible
+
+## Related Skills — Skill Routing
+
+> Need to do more? Use the right skill:
+
+| User Intent | Recommended Skill | Install |
+|-------------|------------------|---------|
+| Read-only monitoring ← | **vmware-monitor** (this skill) | — |
+| Datastore usage, iSCSI config, vSAN health | **vmware-storage** | `uv tool install vmware-storage` |
+| Power on/off, create/delete VM, deploy OVA | **vmware-aiops** | `uv tool install vmware-aiops` |
+| Run commands inside VM, upload files | **vmware-aiops** | `uv tool install vmware-aiops` |
 
 ## Quick Install
 
