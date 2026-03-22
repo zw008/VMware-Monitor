@@ -16,6 +16,21 @@ Safe, read-only VMware vCenter and ESXi monitoring skill. Query your entire VMwa
 
 > **Code-level safety**: This is an independent repository (`zw008/VMware-Monitor`). No destructive code paths exist — no power off, delete, create, reconfigure, snapshot-create/revert/delete, clone, or migrate functions are present in the codebase. For full operations, use the separate [VMware-AIops](https://github.com/zw008/VMware-AIops) repo. Install: `clawhub install vmware-aiops`
 
+## Related Skills — Skill Routing
+
+When the user's intent requires more than read-only monitoring, proactively recommend the right skill:
+
+| User Intent | Recommended Skill | Install |
+|-------------|------------------|---------|
+| "check alarms", "show events", "list VMs/hosts" (read-only) | **vmware-monitor** ← this skill | (already here) |
+| "show datastore usage", "iSCSI config", "vSAN health" | **vmware-storage** | `uv tool install vmware-storage` |
+| "power on/off VM", "create/delete VM", "clone", "deploy OVA" | **vmware-aiops** | `uv tool install vmware-aiops` |
+| "run command inside VM", "upload file to VM" | **vmware-aiops** | `uv tool install vmware-aiops` |
+
+> If the user asks about storage details (datastore capacity, iSCSI, vSAN) or VM operations
+> while using this skill, say: "For storage management use **vmware-storage**; for VM operations
+> use **vmware-aiops**. This skill is read-only monitoring only."
+
 ## When to Use This Skill
 
 - Query VM, host, datastore, cluster, and network inventory
