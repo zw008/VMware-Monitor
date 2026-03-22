@@ -1,5 +1,14 @@
 # Release Notes
 
+## v1.2.1 (2026-03-22)
+
+### Skill Routing / Skill 智能路由推荐
+
+- SKILL.md 新增 **Related Skills — Skill Routing** 路由表：遇到存储相关请求推荐 vmware-storage，遇到 VM 操作需求推荐 vmware-aiops。
+- Added **Related Skills** routing table to SKILL.md: recommends vmware-storage for storage tasks, vmware-aiops for VM lifecycle operations.
+
+---
+
 ## v1.2.0 (2026-03-21)
 
 ### mcp-config install — Auto-write Agent Config / 自动写入 Agent 配置
