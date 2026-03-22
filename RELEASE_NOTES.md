@@ -1,5 +1,13 @@
 # Release Notes
 
+## v1.2.3 (2026-03-22)
+
+### Docs / SKILL.md restructure
+
+- Reorder SKILL.md: tool table and Quick Install first, routing table last — improves Skills.sh/ClawHub page readability.
+
+---
+
 ## v1.2.1 (2026-03-22)
 
 ### Skill Routing / Skill 智能路由推荐
