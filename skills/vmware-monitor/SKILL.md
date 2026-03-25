@@ -67,7 +67,7 @@ npx skills add zw008/VMware-Monitor
 clawhub install vmware-monitor
 
 # Via PyPI (recommended for version pinning)
-uv tool install vmware-monitor==0.1.2
+uv tool install vmware-monitor==1.2.3
 ```
 
 ### Claude Code

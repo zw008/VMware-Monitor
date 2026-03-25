@@ -632,12 +632,12 @@ VMware-Monitor/
 
 ## Related Projects
 
-| Repository | Description | Install |
-|------------|-------------|---------|
-| **[VMware-Monitor](https://github.com/zw008/VMware-Monitor)** (this repo) | Read-only monitoring — code-level safety | `clawhub install vmware-monitor` |
-| **[VMware-AIops](https://github.com/zw008/VMware-AIops)** | Full operations — monitoring + VM lifecycle | `clawhub install vmware-aiops` |
-
-> **Choosing between them**: Use **VMware-Monitor** if you only need read-only monitoring with zero risk of accidental changes. Use **VMware-AIops** if you need full operations (create, delete, power, snapshot, clone, migrate).
+| Skill | Scope | Tools | Install |
+|-------|-------|:-----:|---------|
+| **[vmware-monitor](https://github.com/zw008/VMware-Monitor)** | Read-only monitoring, alarms, events | 8 | `uv tool install vmware-monitor` |
+| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** | VM lifecycle, deployment, guest ops, clusters | 33 | `uv tool install vmware-aiops` |
+| **[vmware-storage](https://github.com/zw008/VMware-Storage)** | Datastores, iSCSI, vSAN | 11 | `uv tool install vmware-storage` |
+| **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu Namespaces, TKC cluster lifecycle | 20 | `uv tool install vmware-vks` |
 
 ---
 

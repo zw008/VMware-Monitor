@@ -299,10 +299,12 @@ VMware-Monitor/
 
 ## 相关项目
 
-| 仓库 | 说明 | 安装 |
-|------|------|------|
-| [VMware-Monitor](https://github.com/zw008/VMware-Monitor)（本仓库） | 只读监控 — 代码级安全 | `clawhub install vmware-monitor` |
-| [VMware-AIops](https://github.com/zw008/VMware-AIops) | 完整运维 — 监控 + VM 生命周期 | `clawhub install vmware-aiops` |
+| Skill | 范围 | 工具数 | 安装 |
+|-------|------|:-----:|------|
+| **[vmware-monitor](https://github.com/zw008/VMware-Monitor)** | 只读监控、告警、事件 | 8 | `uv tool install vmware-monitor` |
+| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** | VM 生命周期、部署、Guest Ops、集群 | 33 | `uv tool install vmware-aiops` |
+| **[vmware-storage](https://github.com/zw008/VMware-Storage)** | 数据存储、iSCSI、vSAN | 11 | `uv tool install vmware-storage` |
+| **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu 命名空间、TKC 集群生命周期 | 20 | `uv tool install vmware-vks` |
 
 ## 问题反馈与贡献
 
