@@ -53,6 +53,7 @@ vmware-monitor doctor
 | Datastore usage, iSCSI config, vSAN health | **vmware-storage** | `uv tool install vmware-storage` |
 | Power on/off, create/delete VM, deploy OVA | **vmware-aiops** | `uv tool install vmware-aiops` |
 | Run commands inside VM, upload files | **vmware-aiops** | `uv tool install vmware-aiops` |
+| Tanzu Namespace, TKC cluster lifecycle | **vmware-vks** | `uv tool install vmware-vks` |
 
 ## Quick Install
 
