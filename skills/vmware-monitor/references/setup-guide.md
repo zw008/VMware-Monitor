@@ -77,9 +77,8 @@ For Claude Code / Cursor users who prefer structured tool calls, add to `~/.clau
 {
   "mcpServers": {
     "vmware-monitor": {
-      "command": "/path/to/VMware-Monitor/.venv/bin/python",
-      "args": ["-m", "mcp_server"],
-      "cwd": "/path/to/VMware-Monitor",
+      "command": "uvx",
+      "args": ["--from", "vmware-monitor", "vmware-monitor-mcp"],
       "env": {
         "VMWARE_MONITOR_CONFIG": "~/.vmware-monitor/config.yaml"
       }

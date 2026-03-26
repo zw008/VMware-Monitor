@@ -282,8 +282,8 @@ aider --conventions codex-skill/AGENTS.md --model ollama/qwen2.5-coder:32b
 #### MCP 服务器
 
 ```bash
-python -m mcp_server
-# 或: vmware-monitor-mcp
+uvx --from vmware-monitor vmware-monitor-mcp
+# 或如果已在 PATH 中: vmware-monitor-mcp
 ```
 
 #### 独立 CLI（无需 AI）

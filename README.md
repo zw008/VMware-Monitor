@@ -487,14 +487,14 @@ cp kimi-skill/SKILL.md ~/.kimi/skills/vmware-monitor/SKILL.md
 The MCP server exposes VMware read-only monitoring as tools via the [Model Context Protocol](https://modelcontextprotocol.io). Works with any MCP-compatible client (Claude Desktop, Cursor, etc.).
 
 ```bash
-# Run directly
-python -m mcp_server
+# Run directly (after uv tool install)
+uvx --from vmware-monitor vmware-monitor-mcp
 
-# Or via the installed entry point
+# Or if already on PATH
 vmware-monitor-mcp
 
 # With a custom config path
-VMWARE_MONITOR_CONFIG=/path/to/config.yaml python -m mcp_server
+VMWARE_MONITOR_CONFIG=/path/to/config.yaml uvx --from vmware-monitor vmware-monitor-mcp
 ```
 
 **Claude Desktop config** (`claude_desktop_config.json`):
@@ -502,8 +502,8 @@ VMWARE_MONITOR_CONFIG=/path/to/config.yaml python -m mcp_server
 {
   "mcpServers": {
     "vmware-monitor": {
-      "command": "python",
-      "args": ["-m", "mcp_server"],
+      "command": "uvx",
+      "args": ["--from", "vmware-monitor", "vmware-monitor-mcp"],
       "env": {
         "VMWARE_MONITOR_CONFIG": "/path/to/config.yaml"
       }

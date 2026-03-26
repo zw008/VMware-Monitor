@@ -40,8 +40,7 @@
 goose configure
 # Select: Add Extension → MCP Server
 # Name: vmware-monitor
-# Command: python -m mcp_server
-# Working directory: /path/to/VMware-Monitor
+# Command: uvx --from vmware-monitor vmware-monitor-mcp
 # Env: VMWARE_MONITOR_CONFIG=~/.vmware-monitor/config.yaml
 ```
 
@@ -53,18 +52,16 @@ Add to `~/.config/goose/config.yaml`:
 extensions:
   vmware-monitor:
     type: stdio
-    cmd: python
+    cmd: uvx
     args:
-      - -m
-      - mcp_server
-    cwd: /path/to/VMware-Monitor
+      - --from
+      - vmware-monitor
+      - vmware-monitor-mcp
     env:
       VMWARE_MONITOR_CONFIG: ~/.vmware-monitor/config.yaml
     enabled: true
     description: VMware vCenter/ESXi read-only monitoring (code-level safe)
 ```
-
-Replace `/path/to/VMware-Monitor` with your actual clone path.
 
 A ready-to-use template is available at `examples/mcp-configs/goose.json`.
 
@@ -137,9 +134,8 @@ model: qwen2.5:32b
 extensions:
   vmware-monitor:
     type: stdio
-    cmd: python
-    args: [-m, mcp_server]
-    cwd: /path/to/VMware-Monitor
+    cmd: uvx
+    args: [--from, vmware-monitor, vmware-monitor-mcp]
     env:
       VMWARE_MONITOR_CONFIG: ~/.vmware-monitor/config.yaml
 ```
