@@ -3,7 +3,7 @@
 
 English | [中文](README-CN.md)
 
-**Read-only** VMware vCenter/ESXi monitoring tool. Code-level enforced safety — no destructive operations exist in this codebase.
+**Read-only** VMware vCenter/ESXi monitoring — 8 tools, code-level safety. No destructive operations exist in this codebase.
 
 > **Why a separate repository?** VMware Monitor is fully independent from [VMware-AIops](https://github.com/zw008/VMware-AIops). Safety is enforced at the **code level**: no power off, delete, create, reconfigure, snapshot-create/revert/delete, clone, or migrate functions exist in this codebase. Not just prompt constraints — zero destructive code paths.
 
@@ -11,6 +11,14 @@ English | [中文](README-CN.md)
 [![Skills.sh](https://img.shields.io/badge/Skills.sh-Install-blue)](https://skills.sh/zw008/VMware-Monitor)
 [![Claude Code Marketplace](https://img.shields.io/badge/Claude_Code-Marketplace-blueviolet)](https://github.com/zw008/VMware-Monitor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+### Companion Skills
+
+| Skill | Scope | Tools | Install |
+|-------|-------|:-----:|---------|
+| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** | VM lifecycle, deployment, guest ops, clusters | 33 | `uv tool install vmware-aiops` |
+| **[vmware-storage](https://github.com/zw008/VMware-Storage)** | Datastores, iSCSI, vSAN | 11 | `uv tool install vmware-storage` |
+| **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu Namespaces, TKC cluster lifecycle | 20 | `uv tool install vmware-vks` |
 
 ### Quick Install (Recommended)
 
@@ -150,6 +158,54 @@ These operations **do not exist** in this repository:
 - ❌ `_double_confirm`, `_show_state_preview`, `_validate_vm_params`
 
 For these operations, use the full [VMware-AIops](https://github.com/zw008/VMware-AIops) repository.
+
+---
+
+## Common Workflows
+
+### Daily Health Check
+
+1. Check alarms: `vmware-monitor health alarms --target prod-vcenter`
+2. Review recent events: `vmware-monitor health events --hours 24 --severity warning`
+3. List hosts: `vmware-monitor inventory hosts` — check connection state and memory usage
+
+### Investigate a Specific VM
+
+1. Find the VM: `vmware-monitor inventory vms --power-state poweredOff`
+2. Get details: `vmware-monitor vm info problem-vm`
+3. Check related events: `vmware-monitor health events --hours 48`
+
+### Set Up Continuous Monitoring
+
+1. Configure webhook in `~/.vmware-monitor/config.yaml`
+2. Start daemon: `vmware-monitor daemon start`
+3. Daemon scans every 15 min, sends alerts to Slack/Discord
+
+---
+
+## Troubleshooting
+
+### Alarms returns empty but vCenter shows alarms
+
+The `get_alarms` tool queries triggered alarms at the root folder level. Some alarms are entity-specific — try checking events instead: `vmware-monitor health events --hours 1 --severity info`.
+
+### "Connection refused" error
+
+1. Run `vmware-monitor doctor` to diagnose
+2. Verify target hostname/IP and port (443) in `config.yaml`
+3. For self-signed certs: set `disableSslCertValidation: true`
+
+### Events returns too many results
+
+Use severity filter: `--severity warning` (default) filters out info-level events. Use `--hours 4` to narrow the time range.
+
+### VM info shows "guest_os: unknown"
+
+VMware Tools not installed or not running in the guest. Install/start VMware Tools for guest OS detection, IP address, and guest family info.
+
+### Doctor passes but commands fail with timeout
+
+vCenter may be under heavy load. Try targeting a specific ESXi host directly instead of vCenter, or increase connection timeout in `config.yaml`.
 
 ---
 

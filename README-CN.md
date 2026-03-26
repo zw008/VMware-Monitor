@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-**只读** VMware vCenter/ESXi 监控工具。代码级安全保障 — 代码库中不存在任何破坏性操作。
+**只读** VMware vCenter/ESXi 监控 — 8 个工具，代码级安全保障。代码库中不存在任何破坏性操作。
 
 > **为什么独立仓库？** VMware Monitor 完全独立于 [VMware-AIops](https://github.com/zw008/VMware-AIops)。安全性在**代码级别**保障：代码库中不存在关机、删除、创建、调整配置、快照创建/恢复/删除、克隆、迁移等函数。不仅仅是提示词约束 — 而是零破坏性代码路径。
 
@@ -10,6 +10,14 @@
 [![Skills.sh](https://img.shields.io/badge/Skills.sh-Install-blue)](https://skills.sh/zw008/VMware-Monitor)
 [![Claude Code Marketplace](https://img.shields.io/badge/Claude_Code-Marketplace-blueviolet)](https://github.com/zw008/VMware-Monitor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+### 配套技能
+
+| 技能 | 范围 | 工具数 | 安装 |
+|------|------|:-----:|------|
+| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** | VM 生命周期、部署、Guest Ops、集群 | 33 | `uv tool install vmware-aiops` |
+| **[vmware-storage](https://github.com/zw008/VMware-Storage)** | 数据存储、iSCSI、vSAN | 11 | `uv tool install vmware-storage` |
+| **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu 命名空间、TKC 集群生命周期 | 20 | `uv tool install vmware-vks` |
 
 ### 快速安装（推荐）
 
@@ -132,6 +140,54 @@ ESXi 独立主机 ──→ VM
 - ❌ 克隆、迁移
 
 需要这些操作请使用 [VMware-AIops](https://github.com/zw008/VMware-AIops)。
+
+---
+
+## 常用工作流
+
+### 日常健康检查
+
+1. 检查告警：`vmware-monitor health alarms --target prod-vcenter`
+2. 查看近期事件：`vmware-monitor health events --hours 24 --severity warning`
+3. 列出主机：`vmware-monitor inventory hosts` — 检查连接状态和内存使用
+
+### 排查特定虚拟机
+
+1. 查找 VM：`vmware-monitor inventory vms --power-state poweredOff`
+2. 获取详情：`vmware-monitor vm info problem-vm`
+3. 查看相关事件：`vmware-monitor health events --hours 48`
+
+### 设置持续监控
+
+1. 在 `~/.vmware-monitor/config.yaml` 中配置 webhook
+2. 启动守护进程：`vmware-monitor daemon start`
+3. 守护进程每 15 分钟扫描一次，向 Slack/Discord 发送告警
+
+---
+
+## 故障排查
+
+### 告警返回为空但 vCenter 显示有告警
+
+`get_alarms` 工具在根文件夹级别查询已触发的告警。部分告警是实体级别的 — 尝试改用事件查询：`vmware-monitor health events --hours 1 --severity info`。
+
+### "Connection refused" 错误
+
+1. 运行 `vmware-monitor doctor` 进行诊断
+2. 检查 `config.yaml` 中的目标主机名/IP 和端口（443）
+3. 自签名证书场景：设置 `disableSslCertValidation: true`
+
+### 事件返回过多
+
+使用严重级别过滤：`--severity warning`（默认）会过滤掉 info 级别事件。使用 `--hours 4` 缩小时间范围。
+
+### VM 信息显示 "guest_os: unknown"
+
+客户机中未安装或未运行 VMware Tools。安装/启动 VMware Tools 以获取操作系统检测、IP 地址和客户机系列信息。
+
+### Doctor 通过但命令超时
+
+vCenter 可能负载过高。尝试直接连接特定 ESXi 主机而非 vCenter，或在 `config.yaml` 中增加连接超时时间。
 
 ---
 
