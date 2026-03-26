@@ -1,5 +1,18 @@
 # Release Notes
 
+## v1.3.0 — 2026-03-26
+
+### Docs / Skill optimization
+
+- SKILL.md restructured with progressive disclosure (3-level loading)
+- Created `references/` directory: cli-reference.md, capabilities.md, setup-guide.md
+- Added trigger phrases to YAML description for better skill auto-loading
+- Added Common Workflows section (Daily Health Check, Investigate VM, Continuous Monitoring)
+- Added Troubleshooting section (5 common issues)
+- README.md and README-CN.md updated with Companion Skills, Workflows, Troubleshooting
+
+---
+
 ## v1.2.3 (2026-03-22)
 
 ### Docs / SKILL.md restructure
