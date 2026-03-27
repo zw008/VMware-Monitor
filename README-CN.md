@@ -15,9 +15,12 @@
 
 | 技能 | 范围 | 工具数 | 安装 |
 |------|------|:-----:|------|
-| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** | VM 生命周期、部署、Guest Ops、集群 | 33 | `uv tool install vmware-aiops` |
+| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** ⭐ 统一入口 | VM 生命周期、部署、Guest Ops、集群 | 31 | `uv tool install vmware-aiops` |
 | **[vmware-storage](https://github.com/zw008/VMware-Storage)** | 数据存储、iSCSI、vSAN | 11 | `uv tool install vmware-storage` |
 | **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu 命名空间、TKC 集群生命周期 | 20 | `uv tool install vmware-vks` |
+| **[vmware-nsx](https://github.com/zw008/VMware-NSX)** | NSX 网络：段、网关、NAT、IPAM | 31 | `uv tool install vmware-nsx-mgmt` |
+| **[vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security)** | DFW 微分段、安全组、Traceflow | 20 | `uv tool install vmware-nsx-security` |
+| **[vmware-aria](https://github.com/zw008/VMware-Aria)** | Aria Ops 指标、告警、容量规划 | 18 | `uv tool install vmware-aria` |
 
 ### 快速安装（推荐）
 
