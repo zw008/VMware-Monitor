@@ -11,6 +11,8 @@ description: >
 installer:
   kind: uv
   package: vmware-monitor
+allowed-tools:
+  - Bash
 metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmware-monitor"],"config":["~/.vmware-monitor/config.yaml"]},"primaryEnv":"VMWARE_MONITOR_CONFIG","homepage":"https://github.com/zw008/VMware-Monitor","emoji":"📊","os":["macos","linux"]}}
 ---
 
