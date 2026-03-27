@@ -19,7 +19,7 @@ metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmwa
 Read-only VMware vCenter/ESXi monitoring — 8 MCP tools, zero destructive code.
 
 > **Code-level safety**: This skill contains NO power, create, delete, snapshot, or modify operations. Not disabled — they don't exist in the codebase.
-> **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes).
+> **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity).
 
 ## What This Skill Does
 
@@ -54,10 +54,13 @@ vmware-monitor doctor
 
 | User Intent | Recommended Skill |
 |-------------|------------------|
-| Read-only monitoring, zero risk | **vmware-monitor** <-- this skill |
-| Storage: iSCSI, vSAN | **vmware-storage** |
+| Read-only vSphere monitoring, zero risk | **vmware-monitor** ← this skill |
+| Storage: iSCSI, vSAN, datastores | **vmware-storage** |
 | VM lifecycle, deployment, guest ops | **vmware-aiops** |
 | Tanzu Kubernetes (vSphere 8.x+) | **vmware-vks** |
+| NSX networking: segments, gateways, NAT | **vmware-nsx** |
+| NSX security: DFW rules, security groups | **vmware-nsx-security** |
+| Aria Ops: metrics, alerts, capacity planning | **vmware-aria** |
 
 ## Common Workflows
 
