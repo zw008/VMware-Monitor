@@ -47,6 +47,24 @@ vmware-monitor doctor
 - Set up scheduled monitoring with webhook alerts
 - Any read-only VMware query where safety is paramount
 
+### Alarm/Event Output: `suggested_actions` Field
+
+`get_alarms` and `get_events` results include a `suggested_actions` list.
+Each item is a ready-to-use hint pointing to the correct companion skill and tool:
+
+```json
+{
+  "alarm_name": "VM CPU Ready High",
+  "entity_name": "prod-db-01",
+  "suggested_actions": [
+    "vmware-aiops: acknowledge_vcenter_alarm(entity_name='prod-db-01', alarm_name='VM CPU Ready High')",
+    "vmware-aiops: reset_vcenter_alarm(entity_name='prod-db-01', alarm_name='VM CPU Ready High')"
+  ]
+}
+```
+
+AI agents (especially smaller local models) can read these hints directly to determine which skill and tool to call next, without needing to reason about skill routing themselves.
+
 **Use companion skills for**:
 - Power on/off, deploy, clone, migrate --> `vmware-aiops`
 - iSCSI, vSAN, datastore management --> `vmware-storage`
@@ -89,8 +107,8 @@ vmware-monitor doctor
 | `list_esxi_hosts` | ESXi hosts with CPU, memory, version, uptime |
 | `list_all_datastores` | Datastores with capacity, free space, type |
 | `list_all_clusters` | Clusters with host count, DRS/HA status |
-| `get_alarms` | All active/triggered alarms |
-| `get_events` | Recent events filtered by severity and time |
+| `get_alarms` | All active/triggered alarms — includes `suggested_actions` remediation hints |
+| `get_events` | Recent events filtered by severity and time — includes `suggested_actions` hints |
 | `vm_info` | Detailed VM info (CPU, memory, disks, NICs, snapshots) |
 
 All tools are **read-only**. No tool can modify, create, or delete any resource.
