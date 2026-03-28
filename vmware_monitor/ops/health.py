@@ -45,6 +45,27 @@ INFO_EVENTS = {
 
 SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2}
 
+# Maps event type → suggested remediation skill/tool hint
+_EVENT_SUGGESTIONS: dict[str, str] = {
+    "VmFailedToPowerOnEvent": "vmware-aiops: vm_power_on(vm_name='{entity}')",
+    "VmFailoverFailed": "vmware-aiops: vm_power_on(vm_name='{entity}')",
+    "VmFailedToRebootGuestEvent": "vmware-aiops: vm_power_off then vm_power_on(vm_name='{entity}')",
+    "HostConnectionLostEvent": "vmware-monitor: list_esxi_hosts — verify host is reachable",
+    "HostShutdownEvent": "vmware-monitor: list_esxi_hosts — check if shutdown was intentional",
+    "VmDiskFailedEvent": "vmware-storage: check datastore health; vmware-monitor: list_all_datastores",
+    "DasHostFailedEvent": "vmware-monitor: list_esxi_hosts — check HA cluster status",
+    "DatastoreRemovedOnHostEvent": "vmware-storage: rescan; vmware-monitor: list_all_datastores",
+}
+
+
+def _get_event_entity(event: object) -> str | None:
+    """Extract entity name from a pyVmomi event object."""
+    for attr in ("vm", "host", "ds", "computeResource", "net"):
+        obj = getattr(event, attr, None)
+        if obj:
+            return getattr(obj, "name", None)
+    return None
+
 
 def get_active_alarms(si: ServiceInstance) -> list[dict]:
     """Get all active/triggered alarms across the inventory."""
@@ -57,13 +78,29 @@ def get_active_alarms(si: ServiceInstance) -> list[dict]:
         for alarm_state in entity.triggeredAlarmState:
             severity = str(alarm_state.overallStatus)
             severity_map = {"red": "critical", "yellow": "warning", "green": "info"}
+            entity_name = alarm_state.entity.name
+            alarm_name = alarm_state.alarm.info.name
+            acknowledged = getattr(alarm_state, "acknowledged", False)
+
+            actions: list[str] = []
+            if not acknowledged:
+                actions.append(
+                    f"vmware-aiops: acknowledge_vcenter_alarm"
+                    f"(entity_name='{entity_name}', alarm_name='{alarm_name}')"
+                )
+            actions.append(
+                f"vmware-aiops: reset_vcenter_alarm"
+                f"(entity_name='{entity_name}', alarm_name='{alarm_name}')"
+            )
+
             results.append({
                 "severity": severity_map.get(severity, severity),
-                "alarm_name": alarm_state.alarm.info.name,
-                "entity_name": alarm_state.entity.name,
+                "alarm_name": alarm_name,
+                "entity_name": entity_name,
                 "entity_type": type(alarm_state.entity).__name__,
                 "time": str(alarm_state.time),
-                "acknowledged": getattr(alarm_state, "acknowledged", False),
+                "acknowledged": acknowledged,
+                "suggested_actions": actions,
             })
 
     _collect_alarms(content.rootFolder)
@@ -127,12 +164,20 @@ def get_recent_events(
         if SEVERITY_ORDER.get(sev, 2) > min_level:
             continue
 
+        entity_name = _get_event_entity(event)
+        suggestion_template = _EVENT_SUGGESTIONS.get(event_type)
+        actions: list[str] = []
+        if suggestion_template:
+            actions.append(suggestion_template.format(entity=entity_name or "?"))
+
         results.append({
             "severity": sev,
             "event_type": event_type,
+            "entity_name": entity_name,
             "message": event.fullFormattedMessage or str(event),
             "time": str(event.createdTime),
             "username": event.userName if hasattr(event, "userName") else "N/A",
+            "suggested_actions": actions,
         })
 
     return sorted(results, key=lambda x: x["time"], reverse=True)
