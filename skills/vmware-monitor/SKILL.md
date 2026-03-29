@@ -22,6 +22,7 @@ Read-only VMware vCenter/ESXi monitoring — 8 MCP tools, zero destructive code.
 
 > **Code-level safety**: This skill contains NO power, create, delete, snapshot, or modify operations. Not disabled — they don't exist in the codebase.
 > **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity).
+> | [vmware-pilot](../vmware-pilot/SKILL.md) (workflow orchestration) | [vmware-policy](../vmware-policy/SKILL.md) (audit/policy)
 
 ## What This Skill Does
 
@@ -81,6 +82,8 @@ AI agents (especially smaller local models) can read these hints directly to det
 | NSX networking: segments, gateways, NAT | **vmware-nsx** |
 | NSX security: DFW rules, security groups | **vmware-nsx-security** |
 | Aria Ops: metrics, alerts, capacity planning | **vmware-aria** |
+| Multi-step workflows with approval | **vmware-pilot** |
+| Audit log query | **vmware-policy** (`vmware-audit` CLI) |
 
 ## Common Workflows
 
@@ -157,6 +160,8 @@ mkdir -p ~/.vmware-monitor
 vmware-monitor init
 chmod 600 ~/.vmware-monitor/.env  # if using webhooks
 ```
+
+> All tools are automatically audited via vmware-policy. Audit logs: `vmware-audit log --last 20`
 
 > Full setup guide, security details, and AI platform compatibility: see `references/setup-guide.md`
 

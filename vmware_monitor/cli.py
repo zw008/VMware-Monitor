@@ -5,7 +5,7 @@ This CLI contains ONLY read-only commands. No destructive operations exist:
 - No create, delete, reconfigure VM
 - No snapshot-create, snapshot-revert, snapshot-delete
 - No clone, migrate
-- No _double_confirm, _show_state_preview, _validate_vm_params
+- No destructive safety helpers (double-confirm, state-preview, param-validation)
 """
 
 from __future__ import annotations

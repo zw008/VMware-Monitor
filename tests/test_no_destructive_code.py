@@ -54,7 +54,7 @@ def test_no_destructive_code_in_vmware_monitor() -> None:
             ["grep", "-rn", "--include=*.py", pattern, "vmware_monitor/"],
             capture_output=True,
             text=True,
-            cwd="/Users/zw/testany/VMware-Monitor",
+            cwd="/Users/zw/testany/myskills/VMware-Monitor",
         )
         assert result.stdout == "", (
             f"Destructive pattern '{pattern}' found in vmware_monitor/:\n{result.stdout}"
@@ -69,7 +69,7 @@ def test_no_destructive_code_in_mcp_server() -> None:
             ["grep", "-rn", "--include=*.py", pattern, "mcp_server/"],
             capture_output=True,
             text=True,
-            cwd="/Users/zw/testany/VMware-Monitor",
+            cwd="/Users/zw/testany/myskills/VMware-Monitor",
         )
         assert result.stdout == "", (
             f"Destructive pattern '{pattern}' found in mcp_server/:\n{result.stdout}"

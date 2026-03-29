@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.4.0 — 2026-03-29
+
+### Architecture: Unified Audit & Policy
+
+- **vmware-policy integration**: All MCP tools now wrapped with `@vmware_tool` decorator
+- **Unified audit logging**: Operations logged to `~/.vmware/audit.db` (SQLite WAL), replacing per-skill JSON Lines logs
+- **Policy enforcement**: `check_allowed()` with rules.yaml, maintenance windows, risk-level gating
+- **Sanitize consolidation**: Replaced local `_sanitize()` with shared `vmware_policy.sanitize()`
+- **Risk classification**: Each tool tagged with risk_level (low/medium/high) for confirmation gating
+- **Agent detection**: Audit logs identify calling agent (Claude/Codex/local)
+- **New family members**: vmware-policy (audit/policy infrastructure) + vmware-pilot (workflow orchestration)
+
+---
+
 ## v1.3.1 — 2026-03-27
 
 ### Family expansion: NSX, NSX-Security, Aria

@@ -30,6 +30,7 @@ from typing import Any
 
 # MCP SDK — Model Context Protocol server framework
 from mcp.server.fastmcp import FastMCP
+from vmware_policy import vmware_tool
 
 # Internal VMware monitoring modules (all read-only operations)
 from vmware_monitor.config import load_config
@@ -78,6 +79,7 @@ def _get_connection(target: str | None = None) -> Any:
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def list_virtual_machines(
     target: str | None = None,
     limit: int | None = None,
@@ -106,6 +108,7 @@ def list_virtual_machines(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def list_esxi_hosts(target: str | None = None) -> list[dict]:
     """List all ESXi hosts with CPU cores, memory, version, VM count, and uptime.
 
@@ -117,6 +120,7 @@ def list_esxi_hosts(target: str | None = None) -> list[dict]:
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def list_all_datastores(target: str | None = None) -> list[dict]:
     """List all datastores with capacity, free space, type, and VM count.
 
@@ -128,6 +132,7 @@ def list_all_datastores(target: str | None = None) -> list[dict]:
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def list_all_clusters(target: str | None = None) -> list[dict]:
     """List all clusters with host count, DRS/HA status, and resource totals.
 
@@ -144,6 +149,7 @@ def list_all_clusters(target: str | None = None) -> list[dict]:
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def get_alarms(target: str | None = None) -> list[dict]:
     """Get all active/triggered alarms across the VMware inventory.
 
@@ -155,6 +161,7 @@ def get_alarms(target: str | None = None) -> list[dict]:
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def get_events(
     hours: int = 24,
     severity: str = "warning",
@@ -177,6 +184,7 @@ def get_events(
 
 
 @mcp.tool()
+@vmware_tool(risk_level="low")
 def vm_info(vm_name: str, target: str | None = None) -> dict:
     """Get detailed information about a specific VM (CPU, memory, disks, NICs, snapshots).
 
