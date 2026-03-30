@@ -1,19 +1,18 @@
 ---
 name: vmware-monitor
 description: >
-  VMware vCenter/ESXi read-only monitoring skill. Code-level enforced safety —
-  zero destructive operations in the codebase. Query inventory (VMs, hosts,
-  datastores, clusters), check health/alarms/events, view VM details and snapshots.
-  Use when user asks to "list VMs", "check alarms", "show host status",
-  "get VM info", "what events happened", "monitor vSphere", or needs
-  read-only VMware/vSphere/ESXi information. For VM operations use vmware-aiops,
-  for storage use vmware-storage, for Kubernetes use vmware-vks.
+  Use this skill for safe, risk-free queries of VMware infrastructure — code-level enforced safety means no destructive operations exist in the codebase.
+  Directly handles: list VMs/hosts/datastores/clusters, check active alarms with remediation hints, view recent events, get VM details (CPU/memory/disks/NICs/snapshots).
+  Always use vmware-monitor when the user asks to "list VMs", "check alarms", "show host status", "get VM details", "what events happened", or needs read-only information before making changes.
+  For VM modifications use vmware-aiops, for networking use vmware-nsx, for metrics/capacity use vmware-aria.
 installer:
   kind: uv
   package: vmware-monitor
 allowed-tools:
   - Bash
 metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmware-monitor"],"config":["~/.vmware-monitor/config.yaml"]},"primaryEnv":"VMWARE_MONITOR_CONFIG","homepage":"https://github.com/zw008/VMware-Monitor","emoji":"📊","os":["macos","linux"]}}
+compatibility: >
+  Requires vmware-policy (auto-installed). All operations audited to ~/.vmware/audit.db.
 ---
 
 # VMware Monitor (Read-Only)
@@ -164,6 +163,17 @@ chmod 600 ~/.vmware-monitor/.env  # if using webhooks
 > All tools are automatically audited via vmware-policy. Audit logs: `vmware-audit log --last 20`
 
 > Full setup guide, security details, and AI platform compatibility: see `references/setup-guide.md`
+
+## Audit & Safety
+
+All operations are automatically audited via vmware-policy (`@vmware_tool` decorator):
+- Every tool call logged to `~/.vmware/audit.db` (SQLite, framework-agnostic)
+- Policy rules enforced via `~/.vmware/rules.yaml` (deny rules, maintenance windows, risk levels)
+- Risk classification: each tool tagged as low/medium/high/critical
+- View recent operations: `vmware-audit log --last 20`
+- View denied operations: `vmware-audit log --status denied`
+
+vmware-policy is automatically installed as a dependency — no manual setup needed.
 
 ## License
 

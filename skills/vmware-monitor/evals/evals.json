@@ -1,0 +1,38 @@
+{
+  "skill_name": "vmware-monitor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Show me all VMs that are powered off and how much memory each has",
+      "expected_output": "Filtered VM list with power state and memory",
+      "files": [],
+      "expectations": [
+        "Uses list_virtual_machines with power_state filter",
+        "Results include memory_mb for each VM",
+        "Does NOT attempt any write operations"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Are there any critical alarms? If so, what should I do about them?",
+      "expected_output": "Alarm list with remediation suggestions",
+      "files": [],
+      "expectations": [
+        "Uses get_alarms to retrieve active alarms",
+        "Includes suggested_actions in the response",
+        "Routes user to vmware-aiops for remediation if needed"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Give me a health report of host esxi-02 including hardware status",
+      "expected_output": "Host details with CPU, memory, version, uptime",
+      "files": [],
+      "expectations": [
+        "Uses list_esxi_hosts or vm_info for host details",
+        "Presents information in a readable format",
+        "Does NOT attempt any modifications"
+      ]
+    }
+  ]
+}
