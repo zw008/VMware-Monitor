@@ -4,7 +4,7 @@ description: >
   Use this skill for safe, risk-free queries of VMware infrastructure — code-level enforced safety means no destructive operations exist in the codebase.
   Directly handles: list VMs/hosts/datastores/clusters, check active alarms with remediation hints, view recent events, get VM details (CPU/memory/disks/NICs/snapshots).
   Always use vmware-monitor when the user asks to "list VMs", "check alarms", "show host status", "get VM details", "what events happened", or needs read-only information before making changes.
-  For VM modifications use vmware-aiops, for networking use vmware-nsx, for metrics/capacity use vmware-aria.
+  For VM modifications use vmware-aiops, for networking use vmware-nsx, for metrics/capacity use vmware-aria. For load balancing/AVI/AKO use vmware-avi.
 installer:
   kind: uv
   package: vmware-monitor
@@ -20,7 +20,7 @@ compatibility: >
 Read-only VMware vCenter/ESXi monitoring — 8 MCP tools, zero destructive code.
 
 > **Code-level safety**: This skill contains NO power, create, delete, snapshot, or modify operations. Not disabled — they don't exist in the codebase.
-> **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity).
+> **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity), [vmware-avi](https://github.com/zw008/VMware-AVI) (AVI/ALB/AKO).
 > | [vmware-pilot](../vmware-pilot/SKILL.md) (workflow orchestration) | [vmware-policy](../vmware-policy/SKILL.md) (audit/policy)
 
 ## What This Skill Does
@@ -69,6 +69,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 - Power on/off, deploy, clone, migrate --> `vmware-aiops`
 - iSCSI, vSAN, datastore management --> `vmware-storage`
 - Tanzu Kubernetes clusters --> `vmware-vks`
+- Load balancing, AVI/ALB, AKO, Ingress --> `vmware-avi`
 
 ## Related Skills — Skill Routing
 
@@ -82,6 +83,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | NSX security: DFW rules, security groups | **vmware-nsx-security** |
 | Aria Ops: metrics, alerts, capacity planning | **vmware-aria** |
 | Multi-step workflows with approval | **vmware-pilot** |
+| Load balancer, AVI, ALB, AKO, Ingress | **vmware-avi** (`uv tool install vmware-avi`) |
 | Audit log query | **vmware-policy** (`vmware-audit` CLI) |
 
 ## Common Workflows
@@ -100,6 +102,14 @@ AI agents (especially smaller local models) can read these hints directly to det
 1. Configure webhook in `~/.vmware-monitor/config.yaml`
 2. Start daemon --> `vmware-monitor daemon start`
 3. Daemon scans every 15 min, sends alerts to Slack/Discord
+
+## Usage Mode
+
+| Scenario | Recommended | Why |
+|----------|:-----------:|-----|
+| Local/small models (Ollama, Qwen) | **CLI** | ~2K tokens vs ~8K for MCP |
+| Cloud models (Claude, GPT-4o) | Either | MCP gives structured JSON I/O |
+| Automated pipelines | **MCP** | Type-safe parameters, structured output |
 
 ## MCP Tools (8)
 
