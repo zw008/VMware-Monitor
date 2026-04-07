@@ -53,7 +53,7 @@ Detailed feature tables for `vmware-monitor`.
 | Feature | Details |
 |---------|---------|
 | Code-Level Isolation | Independent repository — zero destructive functions in codebase |
-| Audit Trail | All queries logged to `~/.vmware-monitor/audit.log` (JSONL) |
+| Audit Trail | All queries logged to `~/.vmware/audit.db` (SQLite WAL, via vmware-policy) |
 | Password Protection | `.env` file loading with permission check (warn if not 600) |
 | SSL Self-signed Support | `disableSslCertValidation` — **only** for ESXi hosts with self-signed certificates in isolated lab/home environments. Production environments should use CA-signed certificates with full TLS verification enabled. |
 
