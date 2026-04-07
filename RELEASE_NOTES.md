@@ -1,3 +1,10 @@
+## v1.4.7 (2026-04-08)
+
+- Fix: align openclaw metadata with actual runtime requirements
+- Fix: standardize audit log path to ~/.vmware/audit.db across all docs
+- Fix: update credential env var docs to correct VMWARE_<TARGET>_PASSWORD convention
+- Fix: declare .env config and vmware-policy optional dependency in metadata
+
 # Release Notes
 
 ## v1.4.5 — 2026-04-03
