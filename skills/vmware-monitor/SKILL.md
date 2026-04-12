@@ -3,7 +3,8 @@ name: vmware-monitor
 description: >
   Use this skill for safe, risk-free queries of VMware infrastructure — code-level enforced safety means no destructive operations exist in the codebase.
   Directly handles: list VMs/hosts/datastores/clusters, check active alarms with remediation hints, view recent events, get VM details (CPU/memory/disks/NICs/snapshots).
-  Always use vmware-monitor when the user asks to "list VMs", "check alarms", "show host status", "get VM details", "what events happened", or needs read-only information before making changes.
+  Always use vmware-monitor when the user asks to "list VMs", "check vSphere alarms", "show host status", "get VM details", "what vSphere events happened", or needs read-only VMware information before making changes.
+  Do NOT use for any write operations — this skill is code-level read-only and cannot modify, create, or delete any resource.
   For VM modifications use vmware-aiops, for networking use vmware-nsx, for metrics/capacity use vmware-aria. For load balancing/AVI/AKO use vmware-avi.
 installer:
   kind: uv
@@ -12,7 +13,7 @@ allowed-tools:
   - Bash
 metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmware-monitor"],"config":["~/.vmware-monitor/config.yaml","~/.vmware-monitor/.env"]},"optional":{"env":["VMWARE_TARGET_PASSWORD","SLACK_WEBHOOK_URL","DISCORD_WEBHOOK_URL"],"bins":["vmware-policy"]},"primaryEnv":"VMWARE_MONITOR_CONFIG","homepage":"https://github.com/zw008/VMware-Monitor","emoji":"📊","os":["macos","linux"]}}
 compatibility: >
-  Requires vmware-policy (auto-installed). All operations audited to ~/.vmware/audit.db.
+  vmware-policy auto-installed as Python dependency (provides @vmware_tool decorator and audit logging). All operations audited to ~/.vmware/audit.db.
 ---
 
 # VMware Monitor (Read-Only)
@@ -92,11 +93,13 @@ AI agents (especially smaller local models) can read these hints directly to det
 1. Check alarms --> `vmware-monitor health alarms --target prod-vcenter`
 2. Review recent events --> `vmware-monitor health events --hours 24 --severity warning`
 3. List hosts --> `vmware-monitor inventory hosts` --> check connection state and memory usage
+4. **If connection fails** --> run `vmware-monitor doctor` to diagnose config/network issues
 
 ### Investigate a Specific VM
 1. Find the VM --> `vmware-monitor inventory vms --power-state poweredOff`
 2. Get details --> `vmware-monitor vm info problem-vm`
 3. Check related events --> `vmware-monitor health events --hours 48`
+4. **If VM not found** --> verify VM name with `vmware-monitor inventory vms --limit 100` or check target with `--target <other-vcenter>`
 
 ### Set Up Continuous Monitoring
 1. Configure webhook in `~/.vmware-monitor/config.yaml`
@@ -111,7 +114,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | Cloud models (Claude, GPT-4o) | Either | MCP gives structured JSON I/O |
 | Automated pipelines | **MCP** | Type-safe parameters, structured output |
 
-## MCP Tools (8)
+## MCP Tools (8 — all read-only)
 
 | Tool | Description |
 |------|------------|

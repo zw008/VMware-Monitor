@@ -87,7 +87,7 @@ def list_virtual_machines(
     power_state: str | None = None,
     fields: list[str] | None = None,
 ) -> dict:
-    """List virtual machines with optional filtering, sorting, and field selection.
+    """[READ] List virtual machines with optional filtering, sorting, and field selection.
 
     Returns a dict: {total, mode, vms, hint}.
     Auto-compact: when no limit/fields are set and inventory exceeds 50 VMs,
@@ -109,38 +109,59 @@ def list_virtual_machines(
 
 @mcp.tool()
 @vmware_tool(risk_level="low")
-def list_esxi_hosts(target: str | None = None) -> list[dict]:
-    """List all ESXi hosts with CPU cores, memory, version, VM count, and uptime.
+def list_esxi_hosts(
+    target: str | None = None,
+    limit: int | None = None,
+) -> list[dict]:
+    """[READ] List ESXi hosts with CPU cores, memory, version, VM count, and uptime.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of hosts to return (None = all).
     """
     si = _get_connection(target)
-    return list_hosts(si)
+    results = list_hosts(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
 
 
 @mcp.tool()
 @vmware_tool(risk_level="low")
-def list_all_datastores(target: str | None = None) -> list[dict]:
-    """List all datastores with capacity, free space, type, and VM count.
+def list_all_datastores(
+    target: str | None = None,
+    limit: int | None = None,
+) -> list[dict]:
+    """[READ] List datastores with capacity, free space, type, and VM count.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of datastores to return (None = all).
     """
     si = _get_connection(target)
-    return list_datastores(si)
+    results = list_datastores(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
 
 
 @mcp.tool()
 @vmware_tool(risk_level="low")
-def list_all_clusters(target: str | None = None) -> list[dict]:
-    """List all clusters with host count, DRS/HA status, and resource totals.
+def list_all_clusters(
+    target: str | None = None,
+    limit: int | None = None,
+) -> list[dict]:
+    """[READ] List clusters with host count, DRS/HA status, and resource totals.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of clusters to return (None = all).
     """
     si = _get_connection(target)
-    return list_clusters(si)
+    results = list_clusters(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -150,14 +171,24 @@ def list_all_clusters(target: str | None = None) -> list[dict]:
 
 @mcp.tool()
 @vmware_tool(risk_level="low")
-def get_alarms(target: str | None = None) -> list[dict]:
-    """Get all active/triggered alarms across the VMware inventory.
+def get_alarms(
+    target: str | None = None,
+    limit: int | None = None,
+) -> list[dict]:
+    """[READ] Get active/triggered alarms across the VMware inventory.
+
+    Each alarm includes suggested_actions with ready-to-use hints pointing to
+    the correct companion skill and tool for remediation.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of alarms to return (None = all). Use when many alarms are active.
     """
     si = _get_connection(target)
-    return get_active_alarms(si)
+    results = get_active_alarms(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
 
 
 @mcp.tool()
@@ -167,7 +198,7 @@ def get_events(
     severity: str = "warning",
     target: str | None = None,
 ) -> list[dict]:
-    """Get recent vCenter/ESXi events filtered by severity.
+    """[READ] Get recent vCenter/ESXi events filtered by severity.
 
     Args:
         hours: How many hours back to query (default 24).
@@ -186,7 +217,7 @@ def get_events(
 @mcp.tool()
 @vmware_tool(risk_level="low")
 def vm_info(vm_name: str, target: str | None = None) -> dict:
-    """Get detailed information about a specific VM (CPU, memory, disks, NICs, snapshots).
+    """[READ] Get detailed information about a specific VM (CPU, memory, disks, NICs, snapshots).
 
     Args:
         vm_name: Exact name of the virtual machine.

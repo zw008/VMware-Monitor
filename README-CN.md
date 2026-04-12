@@ -1,5 +1,9 @@
 # VMware Monitor
 
+> **作者**: Wei Zhou, VMware by Broadcom — wei-wz.zhou@broadcom.com
+> 本项目由 VMware 工程师维护的社区项目，非 VMware 官方产品。
+> VMware 官方开发者工具请访问 [developer.broadcom.com](https://developer.broadcom.com)。
+
 [English](README.md) | 中文
 
 **只读** VMware vCenter/ESXi 监控 — 8 个工具，代码级安全保障。代码库中不存在任何破坏性操作。

@@ -1,6 +1,10 @@
 <!-- mcp-name: io.github.zw008/vmware-monitor -->
 # VMware Monitor
 
+> **Author**: Wei Zhou, VMware by Broadcom — wei-wz.zhou@broadcom.com
+> This is a community-driven project by a VMware engineer, not an official VMware product.
+> For official VMware developer tools see [developer.broadcom.com](https://developer.broadcom.com).
+
 English | [中文](README-CN.md)
 
 **Read-only** VMware vCenter/ESXi monitoring — 8 tools, code-level safety. No destructive operations exist in this codebase.
