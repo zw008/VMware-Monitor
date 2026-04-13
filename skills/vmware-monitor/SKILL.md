@@ -14,9 +14,12 @@ allowed-tools:
 metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmware-monitor"],"config":["~/.vmware-monitor/config.yaml","~/.vmware-monitor/.env"]},"optional":{"env":["VMWARE_TARGET_PASSWORD","SLACK_WEBHOOK_URL","DISCORD_WEBHOOK_URL"],"bins":["vmware-policy"]},"primaryEnv":"VMWARE_MONITOR_CONFIG","homepage":"https://github.com/zw008/VMware-Monitor","emoji":"📊","os":["macos","linux"]}}
 compatibility: >
   vmware-policy auto-installed as Python dependency (provides @vmware_tool decorator and audit logging). All operations audited to ~/.vmware/audit.db.
+  Credentials: Each vCenter/ESXi target requires a per-target password env var in ~/.vmware-monitor/.env following the pattern VMWARE_<TARGET_NAME_UPPER>_PASSWORD (e.g., target "vcenter-prod" → VMWARE_VCENTER_PROD_PASSWORD). SLACK_WEBHOOK_URL and DISCORD_WEBHOOK_URL are optional — disabled by default, user-configured only, used solely by the opt-in daemon scanner. Daemon: the background scanner (vmware-monitor daemon start) is user-initiated only, never auto-started. Webhook payloads contain only aggregated alert metadata (alarm counts, event types) — no credentials, IPs, or PII.
 ---
 
 # VMware Monitor (Read-Only)
+
+> **Disclaimer**: This is a community-maintained open-source project and is **not affiliated with, endorsed by, or sponsored by VMware, Inc. or Broadcom Inc.** "VMware" and "vSphere" are trademarks of Broadcom. Source code is publicly auditable at [github.com/zw008/VMware-Monitor](https://github.com/zw008/VMware-Monitor) under the MIT license.
 
 Read-only VMware vCenter/ESXi monitoring — 8 MCP tools, zero destructive code.
 
