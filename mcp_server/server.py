@@ -78,7 +78,7 @@ def _get_connection(target: str | None = None) -> Any:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def list_virtual_machines(
     target: str | None = None,
@@ -103,11 +103,14 @@ def list_virtual_machines(
             Available: name, power_state, cpu, memory_mb, guest_os, ip_address,
                        host, uuid, tools_status.
     """
-    si = _get_connection(target)
-    return list_vms(si, limit=limit, sort_by=sort_by, power_state=power_state, fields=fields)
+    try:
+        si = _get_connection(target)
+        return list_vms(si, limit=limit, sort_by=sort_by, power_state=power_state, fields=fields)
+    except Exception as e:
+        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def list_esxi_hosts(
     target: str | None = None,
@@ -119,14 +122,17 @@ def list_esxi_hosts(
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of hosts to return (None = all).
     """
-    si = _get_connection(target)
-    results = list_hosts(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    try:
+        si = _get_connection(target)
+        results = list_hosts(si)
+        if limit is not None:
+            results = results[:limit]
+        return results
+    except Exception as e:
+        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def list_all_datastores(
     target: str | None = None,
@@ -138,14 +144,17 @@ def list_all_datastores(
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of datastores to return (None = all).
     """
-    si = _get_connection(target)
-    results = list_datastores(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    try:
+        si = _get_connection(target)
+        results = list_datastores(si)
+        if limit is not None:
+            results = results[:limit]
+        return results
+    except Exception as e:
+        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def list_all_clusters(
     target: str | None = None,
@@ -157,11 +166,14 @@ def list_all_clusters(
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of clusters to return (None = all).
     """
-    si = _get_connection(target)
-    results = list_clusters(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    try:
+        si = _get_connection(target)
+        results = list_clusters(si)
+        if limit is not None:
+            results = results[:limit]
+        return results
+    except Exception as e:
+        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 # ---------------------------------------------------------------------------
@@ -169,7 +181,7 @@ def list_all_clusters(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def get_alarms(
     target: str | None = None,
@@ -184,14 +196,17 @@ def get_alarms(
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of alarms to return (None = all). Use when many alarms are active.
     """
-    si = _get_connection(target)
-    results = get_active_alarms(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    try:
+        si = _get_connection(target)
+        results = get_active_alarms(si)
+        if limit is not None:
+            results = results[:limit]
+        return results
+    except Exception as e:
+        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def get_events(
     hours: int = 24,
@@ -205,8 +220,11 @@ def get_events(
         severity: Minimum severity level: "critical", "warning", or "info".
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
     """
-    si = _get_connection(target)
-    return get_recent_events(si, hours=hours, severity=severity)
+    try:
+        si = _get_connection(target)
+        return get_recent_events(si, hours=hours, severity=severity)
+    except Exception as e:
+        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +232,7 @@ def get_events(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def vm_info(vm_name: str, target: str | None = None) -> dict:
     """[READ] Get detailed information about a specific VM (CPU, memory, disks, NICs, snapshots).
@@ -223,8 +241,11 @@ def vm_info(vm_name: str, target: str | None = None) -> dict:
         vm_name: Exact name of the virtual machine.
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
     """
-    si = _get_connection(target)
-    return get_vm_info(si, vm_name)
+    try:
+        si = _get_connection(target)
+        return get_vm_info(si, vm_name)
+    except Exception as e:
+        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 # ---------------------------------------------------------------------------
