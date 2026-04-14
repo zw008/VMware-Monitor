@@ -7,12 +7,12 @@
     "url": "https://github.com/zw008/VMware-Monitor",
     "source": "github"
   },
-  "version": "1.5.5",
+  "version": "1.5.6",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "vmware-monitor",
-      "version": "1.5.5",
+      "version": "1.5.6",
       "transport": {
         "type": "stdio"
       }

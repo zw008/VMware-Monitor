@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vmware-monitor"
-version = "1.5.5"
+version = "1.5.6"
 description = "VMware vCenter/ESXi read-only monitoring tool. No destructive operations — code-level enforced."
 readme = "README.md"
 license = "MIT"
@@ -32,6 +32,9 @@ dev = [
 [project.scripts]
 vmware-monitor = "vmware_monitor.cli:app"
 vmware-monitor-mcp = "mcp_server.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vmware_monitor", "mcp_server"]
 
 [tool.ruff]
 line-length = 100

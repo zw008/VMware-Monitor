@@ -1,3 +1,8 @@
+## v1.5.6 (2026-04-15)
+
+- Fix: CRITICAL — `mcp_server` module missing from PyPI wheel (ModuleNotFoundError when running vmware-monitor-mcp). Added hatch packages config to pyproject.toml
+- Align with VMware skill family v1.5.6
+
 ## v1.5.5 (2026-04-15)
 
 - Align with VMware skill family v1.5.5
