@@ -1,3 +1,7 @@
+## v1.5.5 (2026-04-15)
+
+- Align with VMware skill family v1.5.5
+
 ## v1.5.4 (2026-04-14)
 
 ### Security Updates
