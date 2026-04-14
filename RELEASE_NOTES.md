@@ -1,3 +1,11 @@
+## v1.5.4 (2026-04-14)
+
+### Security Updates
+
+- **pytest CVE-2025-71176**: Upgraded pytest 9.0.2 → 9.0.3 (insecure tmpdir handling)
+- **Dependencies**: Updated rich version constraint from <15.0 to <16.0 for compatibility
+- **Alignment**: Sync with VMware skill family v1.5.4 release
+
 ## v1.5.0 (2026-04-12)
 
 ### Anthropic Best Practices Integration
