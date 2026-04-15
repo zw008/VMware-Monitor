@@ -1,3 +1,7 @@
+## v1.5.8 (2026-04-15)
+
+- Align with VMware skill family v1.5.8 (NSX/AVI/Aria/AIops bug fixes)
+
 ## v1.5.7 (2026-04-15)
 
 - Align with VMware skill family v1.5.7 (Pilot `__from_step_N__` fix + VKS SSL/timeout fix)
