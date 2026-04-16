@@ -1,3 +1,7 @@
+## v1.5.11 (2026-04-17)
+
+- Align with VMware skill family v1.5.11 (AVI 22.x fixes from @timwangbc)
+
 ## v1.5.10 (2026-04-16)
 
 - Security: bump python-multipart 0.0.22→0.0.26 (DoS via large multipart preamble/epilogue)
