@@ -1,3 +1,7 @@
+## v1.5.12 (2026-04-17)
+
+- Align with VMware skill family v1.5.12 (security & bug fixes from code review by @yjs-2026)
+
 ## v1.5.11 (2026-04-17)
 
 - Align with VMware skill family v1.5.11 (AVI 22.x fixes from @timwangbc)
@@ -249,7 +253,8 @@
 
 - **Boundary markers**: All vSphere-sourced content (event messages, host logs) is now wrapped in explicit boundary markers (`[VSPHERE_EVENT]...[/VSPHERE_EVENT]`, `[VSPHERE_HOST_LOG]...[/VSPHERE_HOST_LOG]`) so downstream LLM agents can distinguish trusted output from untrusted vSphere data.
 
-- **Comprehensive control character sanitization**: Replaced simple null-byte removal with regex-based stripping of all C0/C1 control characters (except `\n` and `\t`). Prevents prompt injection via embedded control sequences in vSphere event messages.
+- **Comprehensive control character sanitization**: Replaced simple null-byte removal with regex-based stripping of all C0/C1 control characters (except `
+` and `	`). Prevents prompt injection via embedded control sequences in vSphere event messages.
 
 - **MCP server documentation**: Added comprehensive module docstring to `mcp_server/server.py` with security considerations (all-read-only tool classification, credential handling, transport security) to resolve Socket "Obfuscated File" audit flag.
 
