@@ -711,3 +711,7 @@ If you encounter any errors or issues, please send the error message, logs, or s
 ## License
 
 MIT
+
+## Download History
+
+[![Download History](https://skill-history.com/chart/zw008/vmware-monitor.svg)](https://skill-history.com/zw008/vmware-monitor)
