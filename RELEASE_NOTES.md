@@ -1,3 +1,9 @@
+## v1.5.13 (2026-04-21)
+
+**Bug fixes from code review 2026-04-20**
+
+- **fix:** `log_scanner.py` — `BrowseDiagnosticLog` now probes total line count first, then reads last N lines correctly (was passing line count as start offset)
+
 ## v1.5.12 (2026-04-17)
 
 - Align with VMware skill family v1.5.12 (security & bug fixes from code review by @yjs-2026)

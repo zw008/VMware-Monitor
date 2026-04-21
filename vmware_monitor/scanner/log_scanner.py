@@ -111,8 +111,12 @@ def scan_host_logs(
 
         for log_key in log_keys:
             try:
+                # Probe to discover total line count, then read last N lines
+                probe = diag_mgr.BrowseDiagnosticLog(key=log_key, start=999999999)
+                total_lines = getattr(probe, "lineEnd", 0) or 0
+                start_line = max(1, total_lines - lines + 1) if total_lines > 0 else 1
                 log_data = diag_mgr.BrowseDiagnosticLog(
-                    key=log_key, start=max(1, lines)
+                    key=log_key, start=start_line
                 )
             except Exception:
                 _log.debug("Failed to browse %s log on %s", log_key, host.name, exc_info=True)
