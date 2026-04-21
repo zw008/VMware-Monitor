@@ -1,3 +1,9 @@
+## v1.5.14 (2026-04-21)
+
+**Bug fixes from code review by @yjs-2026 (follow-up)**
+
+- **fix:** `health.py` — container views in `get_active_alarms`, `get_host_hardware_status`, `get_host_services` now wrapped in try/finally to prevent resource leaks on exception
+
 ## v1.5.13 (2026-04-21)
 
 **Bug fixes from code review 2026-04-20**

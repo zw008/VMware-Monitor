@@ -112,9 +112,11 @@ def get_active_alarms(si: ServiceInstance) -> list[dict]:
         container = content.viewManager.CreateContainerView(
             content.rootFolder, [obj_type], True
         )
-        for entity in container.view:
-            _collect_alarms(entity)
-        container.Destroy()
+        try:
+            for entity in container.view:
+                _collect_alarms(entity)
+        finally:
+            container.Destroy()
 
     # Deduplicate by alarm + entity
     seen = set()
@@ -192,20 +194,22 @@ def get_host_hardware_status(si: ServiceInstance) -> list[dict]:
         content.rootFolder, [vim.HostSystem], True
     )
     results = []
-    for host in container.view:
-        runtime_health = host.runtime.healthSystemRuntime
-        if not runtime_health or not runtime_health.systemHealthInfo:
-            continue
-        for sensor in runtime_health.systemHealthInfo.numericSensorInfo:
-            status = str(sensor.sensorType) if hasattr(sensor, "sensorType") else "unknown"
-            results.append({
-                "host": sanitize(host.name),
-                "sensor_name": sanitize(sensor.name),
-                "reading": sensor.currentReading,
-                "unit": sensor.baseUnits,
-                "status": status,
-            })
-    container.Destroy()
+    try:
+        for host in container.view:
+            runtime_health = host.runtime.healthSystemRuntime
+            if not runtime_health or not runtime_health.systemHealthInfo:
+                continue
+            for sensor in runtime_health.systemHealthInfo.numericSensorInfo:
+                status = str(sensor.sensorType) if hasattr(sensor, "sensorType") else "unknown"
+                results.append({
+                    "host": sanitize(host.name),
+                    "sensor_name": sanitize(sensor.name),
+                    "reading": sensor.currentReading,
+                    "unit": sensor.baseUnits,
+                    "status": status,
+                })
+    finally:
+        container.Destroy()
     return results
 
 
@@ -216,19 +220,21 @@ def get_host_services(si: ServiceInstance, host_name: str | None = None) -> list
         content.rootFolder, [vim.HostSystem], True
     )
     results = []
-    for host in container.view:
-        if host_name and host.name != host_name:
-            continue
-        svc_system = host.configManager.serviceSystem
-        if not svc_system:
-            continue
-        for svc in svc_system.serviceInfo.service:
-            results.append({
-                "host": sanitize(host.name),
-                "service": svc.key,
-                "label": sanitize(svc.label),
-                "running": svc.running,
-                "policy": svc.policy,
-            })
-    container.Destroy()
+    try:
+        for host in container.view:
+            if host_name and host.name != host_name:
+                continue
+            svc_system = host.configManager.serviceSystem
+            if not svc_system:
+                continue
+            for svc in svc_system.serviceInfo.service:
+                results.append({
+                    "host": sanitize(host.name),
+                    "service": svc.key,
+                    "label": sanitize(svc.label),
+                    "running": svc.running,
+                    "policy": svc.policy,
+                })
+    finally:
+        container.Destroy()
     return results
