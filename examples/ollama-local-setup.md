@@ -40,7 +40,8 @@ Edit `~/.config/goose/config.yaml`:
 extensions:
   vmware-monitor:
     name: VMware Monitor
-    cmd: vmware-monitor-mcp
+    cmd: vmware-monitor
+    args: [mcp]
     enabled: true
     type: stdio
     timeout: 300

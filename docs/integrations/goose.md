@@ -40,7 +40,7 @@
 goose configure
 # Select: Add Extension → MCP Server
 # Name: vmware-monitor
-# Command: uvx --from vmware-monitor vmware-monitor-mcp
+# Command: vmware-monitor mcp     # v1.5.15+; legacy: uvx --from vmware-monitor vmware-monitor-mcp
 # Env: VMWARE_MONITOR_CONFIG=~/.vmware-monitor/config.yaml
 ```
 
@@ -52,11 +52,9 @@ Add to `~/.config/goose/config.yaml`:
 extensions:
   vmware-monitor:
     type: stdio
-    cmd: uvx
+    cmd: vmware-monitor
     args:
-      - --from
-      - vmware-monitor
-      - vmware-monitor-mcp
+      - mcp
     env:
       VMWARE_MONITOR_CONFIG: ~/.vmware-monitor/config.yaml
     enabled: true
@@ -134,8 +132,8 @@ model: qwen2.5:32b
 extensions:
   vmware-monitor:
     type: stdio
-    cmd: uvx
-    args: [--from, vmware-monitor, vmware-monitor-mcp]
+    cmd: vmware-monitor
+    args: [mcp]
     env:
       VMWARE_MONITOR_CONFIG: ~/.vmware-monitor/config.yaml
 ```

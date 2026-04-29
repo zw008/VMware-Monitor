@@ -1,3 +1,12 @@
+## v1.5.15 (2026-04-29)
+
+**UX improvements from real user feedback**
+
+- **feat:** New top-level CLI subcommand `vmware-monitor mcp` starts the MCP server. Single command, single binary on PATH after `uv tool install vmware-monitor` — no more `uvx --from`, no PyPI re-resolve, no TLS-proxy issues.
+- **feat:** Default `verify_ssl: true` on new targets (was `false`). Self-signed cert environments must now opt in explicitly with `verify_ssl: false` in `config.yaml`.
+- **docs:** README, SKILL.md, setup-guide.md, and all `examples/mcp-configs/*.json` switched to `command: "vmware-monitor"`, `args: ["mcp"]`. uvx form moved to fallback section with TLS-proxy troubleshooting note.
+- **compat:** Legacy `vmware-monitor-mcp` console script kept — existing user configs continue to work unchanged.
+
 ## v1.5.14 (2026-04-21)
 
 **Bug fixes from code review by @yjs-2026 (follow-up)**

@@ -39,16 +39,14 @@ Add to `~/.continue/config.yaml`:
 ```yaml
 mcpServers:
   - name: vmware-monitor
-    command: python
+    command: vmware-monitor
     args:
-      - -m
-      - mcp_server
-    cwd: /path/to/VMware-Monitor
+      - mcp
     env:
       VMWARE_MONITOR_CONFIG: ~/.vmware-monitor/config.yaml
 ```
 
-A ready-to-use template is available at `examples/mcp-configs/continue.yaml`.
+Requires `uv tool install vmware-monitor` (v1.5.15+). A ready-to-use template is available at `examples/mcp-configs/continue.yaml`.
 
 ### With Ollama (Local Model)
 
@@ -61,9 +59,8 @@ models:
 
 mcpServers:
   - name: vmware-monitor
-    command: python
-    args: [-m, mcp_server]
-    cwd: /path/to/VMware-Monitor
+    command: vmware-monitor
+    args: [mcp]
     env:
       VMWARE_MONITOR_CONFIG: ~/.vmware-monitor/config.yaml
 ```

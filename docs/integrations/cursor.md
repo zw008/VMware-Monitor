@@ -46,9 +46,8 @@ Add to `~/.cursor/mcp.json`:
 {
   "mcpServers": {
     "vmware-monitor": {
-      "command": "python",
-      "args": ["-m", "mcp_server"],
-      "cwd": "/path/to/VMware-Monitor",
+      "command": "vmware-monitor",
+      "args": ["mcp"],
       "env": {
         "VMWARE_MONITOR_CONFIG": "~/.vmware-monitor/config.yaml"
       }

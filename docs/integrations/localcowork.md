@@ -39,9 +39,8 @@ Edit the LocalCowork MCP config JSON (`~/.localcowork/mcp_config.json` or via th
 ```json
 {
   "vmware-monitor": {
-    "command": "python",
-    "args": ["-m", "mcp_server"],
-    "cwd": "/path/to/VMware-Monitor",
+    "command": "vmware-monitor",
+    "args": ["mcp"],
     "env": {
       "VMWARE_MONITOR_CONFIG": "~/.vmware-monitor/config.yaml"
     }
@@ -49,7 +48,7 @@ Edit the LocalCowork MCP config JSON (`~/.localcowork/mcp_config.json` or via th
 }
 ```
 
-Replace `/path/to/VMware-Monitor` with your actual clone path.
+Requires `uv tool install vmware-monitor` (v1.5.15+).
 
 A ready-to-use template is available at `examples/mcp-configs/localcowork.json`.
 

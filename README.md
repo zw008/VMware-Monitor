@@ -493,15 +493,14 @@ cp kimi-skill/SKILL.md ~/.kimi/skills/vmware-monitor/SKILL.md
 
 The MCP server exposes VMware read-only monitoring as tools via the [Model Context Protocol](https://modelcontextprotocol.io). Works with any MCP-compatible client (Claude Desktop, Cursor, etc.).
 
-```bash
-# Run directly (after uv tool install)
-uvx --from vmware-monitor vmware-monitor-mcp
+**After `uv tool install vmware-monitor`, start the MCP server with one command** (v1.5.15+):
 
-# Or if already on PATH
-vmware-monitor-mcp
+```bash
+# Recommended — single command, no network re-resolve
+vmware-monitor mcp
 
 # With a custom config path
-VMWARE_MONITOR_CONFIG=/path/to/config.yaml uvx --from vmware-monitor vmware-monitor-mcp
+VMWARE_MONITOR_CONFIG=/path/to/config.yaml vmware-monitor mcp
 ```
 
 **Claude Desktop config** (`claude_desktop_config.json`):
@@ -509,8 +508,8 @@ VMWARE_MONITOR_CONFIG=/path/to/config.yaml uvx --from vmware-monitor vmware-moni
 {
   "mcpServers": {
     "vmware-monitor": {
-      "command": "uvx",
-      "args": ["--from", "vmware-monitor", "vmware-monitor-mcp"],
+      "command": "vmware-monitor",
+      "args": ["mcp"],
       "env": {
         "VMWARE_MONITOR_CONFIG": "/path/to/config.yaml"
       }
@@ -518,6 +517,22 @@ VMWARE_MONITOR_CONFIG=/path/to/config.yaml uvx --from vmware-monitor vmware-moni
   }
 }
 ```
+
+<details>
+<summary>Alternative: uvx (no install) or legacy entry point</summary>
+
+```bash
+# Run without installing (requires PyPI access each launch)
+uvx --from vmware-monitor vmware-monitor mcp
+
+# Legacy entry point (still works, kept for backward compatibility)
+vmware-monitor-mcp
+```
+
+> **Behind a corporate TLS proxy?** uvx may fail with `invalid peer certificate: UnknownIssuer`.
+> Use the recommended `vmware-monitor mcp` form above (no network needed), or set `UV_NATIVE_TLS=true`.
+
+</details>
 
 **Install via Smithery**:
 ```bash

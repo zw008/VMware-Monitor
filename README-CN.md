@@ -286,12 +286,21 @@ aider --conventions codex-skill/AGENTS.md
 aider --conventions codex-skill/AGENTS.md --model ollama/qwen2.5-coder:32b
 ```
 
-#### MCP 服务器
+#### MCP 服务器（v1.5.15+ 推荐方式）
+
+完成 `uv tool install vmware-monitor` 后，**一条命令启动 MCP**：
 
 ```bash
-uvx --from vmware-monitor vmware-monitor-mcp
-# 或如果已在 PATH 中: vmware-monitor-mcp
+vmware-monitor mcp
+
+# 指定配置路径
+VMWARE_MONITOR_CONFIG=/path/to/config.yaml vmware-monitor mcp
 ```
+
+> 备选：`uvx --from vmware-monitor vmware-monitor mcp`（不安装临时运行）或 legacy 入口
+> `vmware-monitor-mcp`（仍可用）。公司 TLS 代理网络下 uvx 可能报
+> `invalid peer certificate: UnknownIssuer` — 推荐用上面的 `vmware-monitor mcp`，
+> 或设置 `export UV_NATIVE_TLS=true`。
 
 #### 独立 CLI（无需 AI）
 

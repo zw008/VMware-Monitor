@@ -40,16 +40,14 @@ Add to your `mcp_agent.config.yaml`:
 mcp:
   servers:
     vmware-monitor:
-      command: python
+      command: vmware-monitor
       args:
-        - -m
-        - mcp_server
-      cwd: /path/to/VMware-Monitor
+        - mcp
       env:
         VMWARE_MONITOR_CONFIG: ~/.vmware-monitor/config.yaml
 ```
 
-A ready-to-use template is available at `examples/mcp-configs/mcp-agent.yaml`.
+Requires `uv tool install vmware-monitor` (v1.5.15+). A ready-to-use template is available at `examples/mcp-configs/mcp-agent.yaml`.
 
 ### Full example config
 
@@ -60,9 +58,8 @@ execution_engine: asyncio
 mcp:
   servers:
     vmware-monitor:
-      command: python
-      args: [-m, mcp_server]
-      cwd: /path/to/VMware-Monitor
+      command: vmware-monitor
+      args: [mcp]
       env:
         VMWARE_MONITOR_CONFIG: ~/.vmware-monitor/config.yaml
 

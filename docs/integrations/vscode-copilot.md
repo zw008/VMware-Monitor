@@ -43,9 +43,8 @@ Create or edit `.vscode/mcp.json` in your workspace:
   "servers": {
     "vmware-monitor": {
       "type": "stdio",
-      "command": "python",
-      "args": ["-m", "mcp_server"],
-      "cwd": "/path/to/VMware-Monitor",
+      "command": "vmware-monitor",
+      "args": ["mcp"],
       "env": {
         "VMWARE_MONITOR_CONFIG": "${env:HOME}/.vmware-monitor/config.yaml"
       }
@@ -65,9 +64,8 @@ Add to VS Code `settings.json` (`Cmd+Shift+P` → "Open User Settings JSON"):
     "servers": {
       "vmware-monitor": {
         "type": "stdio",
-        "command": "python",
-        "args": ["-m", "mcp_server"],
-        "cwd": "/path/to/VMware-Monitor",
+        "command": "vmware-monitor",
+        "args": ["mcp"],
         "env": {
           "VMWARE_MONITOR_CONFIG": "/Users/your-name/.vmware-monitor/config.yaml"
         }

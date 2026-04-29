@@ -77,8 +77,8 @@ For Claude Code / Cursor users who prefer structured tool calls, add to `~/.clau
 {
   "mcpServers": {
     "vmware-monitor": {
-      "command": "uvx",
-      "args": ["--from", "vmware-monitor", "vmware-monitor-mcp"],
+      "command": "vmware-monitor",
+      "args": ["mcp"],
       "env": {
         "VMWARE_MONITOR_CONFIG": "~/.vmware-monitor/config.yaml"
       }
@@ -86,6 +86,11 @@ For Claude Code / Cursor users who prefer structured tool calls, add to `~/.clau
   }
 }
 ```
+
+> v1.5.15+ recommends the single-command form `vmware-monitor mcp`. Pre-1.5.15 used
+> `uvx --from vmware-monitor vmware-monitor-mcp`, which still works but re-resolves from
+> PyPI on each launch and breaks behind corporate TLS proxies. The legacy
+> `vmware-monitor-mcp` entry point is also kept for backward compatibility.
 
 MCP exposes 7 read-only tools: `list_virtual_machines`, `list_esxi_hosts`, `list_all_datastores`, `list_all_clusters`, `get_alarms`, `get_events`, `vm_info`. All accept optional `target` parameter.
 
