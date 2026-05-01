@@ -2,6 +2,22 @@
 
 Detailed feature tables for `vmware-monitor`.
 
+## Automation Level Reference
+
+Each operation is classified by autonomy level per the Enterprise Harness Engineering framework. **vmware-monitor is L1/L2 only by design** — no write operations exist in the codebase, enforced at the test level.
+
+| Level | Meaning | Agent autonomy | Examples in this skill |
+|:-:|---|---|---|
+| **L1** | Read-only, raw data | Always auto-run | `list_vms`, `list_hosts`, `list_alarms`, `list_events`, `list_datastores`, `list_clusters`, `host_status` |
+| **L2** | Read + analysis / recommendation | Always auto-run | scheduled scan reports, log pattern matching (error/fail/critical/panic/timeout), alarm correlation, daemon-driven webhook digests |
+| **L3** | Single write — user must approve | *N/A* | — *(use [vmware-aiops](https://github.com/zw008/VMware-AIops) for write operations)* |
+| **L4** | Multi-step plan / apply workflow | *N/A* | — *(use [vmware-pilot](https://github.com/zw008/VMware-Pilot) for orchestration)* |
+| **L5** | Auto-remediation from learned pattern | *N/A* | — *(remediation is out of scope by design)* |
+
+**Notes**:
+- All tools are safe for agents to call without confirmation — the skill is code-level read-only.
+- Test file `test_no_destructive_operations.py` enforces this invariant on every commit.
+
 ## 1. Inventory
 
 | Feature | vCenter | ESXi | Details |

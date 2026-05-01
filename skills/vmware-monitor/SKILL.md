@@ -92,10 +92,15 @@ AI agents (especially smaller local models) can read these hints directly to det
 
 ## Common Workflows
 
+> **Diagnostic investigations**: Before running any "why is X failing / down / abnormal" workflow, follow [`references/investigation-protocol.md`](references/investigation-protocol.md). It enforces the four root-cause completeness criteria (falsifiability / sufficiency / necessity / mechanism) and the up-to-three-rounds deepening loop. Since vmware-monitor is read-only, it serves as the data source — actuation belongs to companion skills like vmware-aiops.
+
 ### Daily Health Check
-1. Check alarms --> `vmware-monitor health alarms --target prod-vcenter`
-2. Review recent events --> `vmware-monitor health events --hours 24 --severity warning`
-3. List hosts --> `vmware-monitor inventory hosts` --> check connection state and memory usage
+
+**Judgment**: alarms tell you what vCenter has decided is wrong, events tell you what happened. They diverge — an event burst with no alarms often signals a metric threshold miscalibration, not "everything is fine." Read both.
+
+1. Check alarms --> `vmware-monitor health alarms --target prod-vcenter` — focus on Red severity AND alarms older than 1 hour (transient ones self-clear)
+2. Review recent events --> `vmware-monitor health events --hours 24 --severity warning` — look for repeated events from the same entity (a single event is noise; 50 events in an hour is a pattern)
+3. List hosts --> `vmware-monitor inventory hosts` — flag hosts disconnected, in maintenance mode unexpectedly, or memory > 90%
 4. **If connection fails** --> run `vmware-monitor doctor` to diagnose config/network issues
 
 ### Investigate a Specific VM

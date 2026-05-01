@@ -1,3 +1,12 @@
+## v1.5.16 (2026-04-30)
+
+**Enterprise Harness Engineering alignment** — adapted from the Linkloud × addxai framework articles ([part 1](https://mp.weixin.qq.com/s/hz4W7ILHJ1yz_pG0Z1xP-A), [part 2](https://mp.weixin.qq.com/s/F3qYbyB3S8oIqx-Y4BrWNQ)).
+
+- **docs:** New `references/investigation-protocol.md` — causal-chain root cause analysis protocol shared with aiops/aria. Monitor serves as the read-only data source for diagnostic chains.
+- **docs:** "Automation Level Reference" section in `references/capabilities.md` — clarifies that monitor is L1/L2 only by code-level design.
+- **docs:** Common Workflows in `SKILL.md` enriched with judgment ("alarms tell you what vCenter decided is wrong, events tell you what happened — they diverge").
+- **align:** Family version bump to v1.5.16.
+
 ## v1.5.15 (2026-04-29)
 
 **UX improvements from real user feedback**
