@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vmware-monitor"
-version = "1.5.17"
+version = "1.5.18"
 description = "VMware vCenter/ESXi read-only monitoring tool. No destructive operations — code-level enforced."
 readme = "README.md"
 license = "MIT"
@@ -22,7 +22,7 @@ dependencies = [
     "vmware-policy>=1.0.0,<2.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest>=8.0,<10.0",
     "pytest-cov>=5.0,<8.0",

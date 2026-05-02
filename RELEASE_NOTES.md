@@ -1,3 +1,11 @@
+## v1.5.18 (2026-05-02)
+
+**Family alignment + tooling normalization** — no source changes in this skill.
+
+- **dev:** Migrated `[project.optional-dependencies] dev` → `[dependency-groups] dev` (PEP 735) so `uv sync --group dev` works uniformly across the family. Canonical set: `pytest>=8.0,<10.0`, `pytest-cov`, `ruff`.
+- **test:** New `tests/eval/regression/test_release_blockers.py` (5 evals) catches the v1.5.x release blockers — missing `mcp_server` in wheel, AST-detected unimported runtime names, Typer app load failure, module import errors. Run via `pytest tests/eval/regression/`.
+- **align:** Family version bump to v1.5.18.
+
 ## v1.5.17 (2026-05-01)
 
 **Family alignment** — no source changes in this skill.
