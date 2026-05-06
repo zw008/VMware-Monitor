@@ -1,3 +1,11 @@
+## v1.5.19 (2026-05-06)
+
+**Family alignment** — no source changes in this skill.
+
+- **build:** Bumped `requires-python` from `>=3.10` to `>=3.11` (regression eval uses `tomllib`).
+- **smoke:** Family `scripts/family_smoke.sh` adds Check 3b — recursive `--help` on every subcommand to surface broken lazy imports (yjs review 2026-05-06; 踩坑 #27).
+- **align:** Tracks v1.5.19 fixes in vmware-nsx (CRITICAL CLI imports), vmware-vks (ApiClient leak), vmware-harden (Twin indexes + LEFT JOIN), vmware-policy (approval gate + singleton lock).
+
 ## v1.5.18 (2026-05-02)
 
 **Family alignment + tooling normalization** — no source changes in this skill.

@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vmware-monitor"
-version = "1.5.18"
+version = "1.5.19"
 description = "VMware vCenter/ESXi read-only monitoring tool. No destructive operations — code-level enforced."
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "Wei Zhou", email = "wei-wz.zhou@broadcom.com" }]
 dependencies = [
     "pyvmomi>=8.0.3.0,<10.0",
