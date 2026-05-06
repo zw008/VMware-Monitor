@@ -86,26 +86,40 @@ def list_virtual_machines(
     sort_by: str = "name",
     power_state: str | None = None,
     fields: list[str] | None = None,
+    folder_filter: str | None = None,
 ) -> dict:
     """[READ] List virtual machines with optional filtering, sorting, and field selection.
 
-    Returns a dict: {total, mode, vms, hint}.
+    Returns a dict: {total, mode, vms, hint}. Each VM entry includes a
+    ``folder_path`` field showing the vCenter inventory folder path
+    (e.g. ``/Colocation/Colo - ISER``).
+
     Auto-compact: when no limit/fields are set and inventory exceeds 50 VMs,
-    returns compact fields (name, power_state, cpu, memory_mb) to keep context
-    manageable. Set limit or fields to override.
+    returns compact fields (name, power_state, cpu, memory_mb, folder_path) to
+    keep context manageable. Set limit or fields to override.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of VMs to return (None = all).
-        sort_by: Sort field: "name" | "cpu" | "memory_mb" | "power_state".
+        sort_by: Sort field: "name" | "cpu" | "memory_mb" | "power_state" | "folder_path".
         power_state: Filter by power state: "poweredOn" | "poweredOff" | "suspended".
         fields: Return only these fields (None = auto-select based on inventory size).
             Available: name, power_state, cpu, memory_mb, guest_os, ip_address,
-                       host, uuid, tools_status.
+                       host, uuid, tools_status, folder_path.
+        folder_filter: Case-insensitive substring match against folder_path.
+            Example: ``folder_filter="Colocation"`` returns VMs anywhere under
+            a Colocation folder, including nested subfolders.
     """
     try:
         si = _get_connection(target)
-        return list_vms(si, limit=limit, sort_by=sort_by, power_state=power_state, fields=fields)
+        return list_vms(
+            si,
+            limit=limit,
+            sort_by=sort_by,
+            power_state=power_state,
+            fields=fields,
+            folder_filter=folder_filter,
+        )
     except Exception as e:
         return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 

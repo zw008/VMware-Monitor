@@ -23,8 +23,51 @@ def _get_objects(si: ServiceInstance, obj_type: list, recursive: bool = True) ->
         container.Destroy()
 
 
-_VM_SORT_KEYS = {"name", "cpu", "memory_mb", "power_state"}
-_COMPACT_FIELDS = ("name", "power_state", "cpu", "memory_mb")
+def folder_path(managed_entity) -> str:
+    """Return the vCenter inventory folder path for a managed entity.
+
+    Walks ``parent`` references up the inventory tree, stopping at the
+    enclosing Datacenter. The Datacenter's root vmFolder (named ``vm`` by
+    default) is omitted so the returned path matches what users see in the
+    vSphere UI under "VMs and Templates".
+
+    Args:
+        managed_entity: Any vim.ManagedEntity (VirtualMachine, Folder, etc.).
+
+    Returns:
+        Forward-slash separated path beginning with ``/``. Returns ``"/"`` for
+        entities that sit directly in the datacenter vmFolder. vApps are
+        included in the path as folders.
+
+    Examples:
+        ``"/"`` — VM at the root of the datacenter vmFolder
+        ``"/Colocation"`` — VM in a top-level "Colocation" folder
+        ``"/Colocation/Colo - ISER"`` — VM nested in a department subfolder
+        ``"/My vApp"`` — VM inside a vApp at the root
+    """
+    parts: list[str] = []
+    p = getattr(managed_entity, "parent", None)
+    # Walk upward, stopping at the Datacenter boundary so the path is
+    # relative to the dc-level vmFolder (which is itself omitted).
+    while p is not None:
+        if isinstance(p, vim.Datacenter):
+            break
+        # Skip the dc's root vmFolder ("vm"); its direct parent is the dc.
+        if isinstance(p, vim.Folder) and isinstance(getattr(p, "parent", None), vim.Datacenter):
+            break
+        parts.append(sanitize(p.name))
+        p = getattr(p, "parent", None)
+    if not parts:
+        return "/"
+    return "/" + "/".join(reversed(parts))
+
+
+_VM_SORT_KEYS = {"name", "cpu", "memory_mb", "power_state", "folder_path"}
+_COMPACT_FIELDS = ("name", "power_state", "cpu", "memory_mb", "folder_path")
+_VM_VALID_FIELDS = {
+    "name", "power_state", "cpu", "memory_mb", "guest_os",
+    "ip_address", "host", "uuid", "tools_status", "folder_path",
+}
 
 
 def list_vms(
@@ -33,6 +76,7 @@ def list_vms(
     sort_by: str = "name",
     power_state: str | None = None,
     fields: list[str] | None = None,
+    folder_filter: str | None = None,
     compact_threshold: int = 50,
 ) -> dict:
     """List virtual machines with optional filtering, sorting, and field selection.
@@ -50,11 +94,14 @@ def list_vms(
     Args:
         si: vSphere ServiceInstance.
         limit: Max number of VMs to return (None = all).
-        sort_by: Sort field: "name" | "cpu" | "memory_mb" | "power_state".
+        sort_by: Sort field: "name" | "cpu" | "memory_mb" | "power_state" | "folder_path".
         power_state: Filter by power state: "poweredOn" | "poweredOff" | "suspended".
         fields: Return only these fields (None = auto).
             Available: name, power_state, cpu, memory_mb, guest_os, ip_address,
-                       host, uuid, tools_status.
+                       host, uuid, tools_status, folder_path.
+        folder_filter: Case-insensitive substring match against folder_path.
+            Example: "Colocation" returns VMs anywhere under a Colocation folder
+            (including nested subfolders like /Colocation/Colo - ISER).
         compact_threshold: Auto-compact when VM count exceeds this (default 50).
     """
     vms = _get_objects(si, [vim.VirtualMachine])
@@ -71,12 +118,18 @@ def list_vms(
             "host": sanitize(vm.runtime.host.name) if vm.runtime.host else "N/A",
             "uuid": config.uuid if config else "N/A",
             "tools_status": str(vm.guest.toolsRunningStatus) if vm.guest else "N/A",
+            "folder_path": folder_path(vm),
         }
         results.append(entry)
 
     # Filter by power state
     if power_state:
         results = [r for r in results if power_state.lower() in r["power_state"].lower()]
+
+    # Filter by folder path (case-insensitive substring)
+    if folder_filter:
+        needle = folder_filter.lower()
+        results = [r for r in results if needle in r["folder_path"].lower()]
 
     # Sort
     sort_key = sort_by if sort_by in _VM_SORT_KEYS else "name"
@@ -104,9 +157,7 @@ def list_vms(
         mode = "full"
         hint = None
         if fields:
-            valid = {"name", "power_state", "cpu", "memory_mb", "guest_os",
-                     "ip_address", "host", "uuid", "tools_status"}
-            keep = [f for f in fields if f in valid]
+            keep = [f for f in fields if f in _VM_VALID_FIELDS]
             if keep:
                 results = [{k: r[k] for k in keep if k in r} for r in results]
 
