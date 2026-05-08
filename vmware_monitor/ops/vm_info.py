@@ -13,7 +13,7 @@ from pyVmomi import vim
 
 from vmware_policy import sanitize
 
-from vmware_monitor.ops.inventory import find_vm_by_name
+from vmware_monitor.ops.inventory import find_vm_by_name, folder_path
 
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
@@ -68,6 +68,7 @@ def get_vm_info(si: ServiceInstance, vm_name: str) -> dict:
         "uuid": config.uuid if config else "N/A",
         "instance_uuid": config.instanceUuid if config else "N/A",
         "host": sanitize(runtime.host.name) if runtime.host else "N/A",
+        "folder_path": folder_path(vm),
         "ip_address": guest.ipAddress if guest else None,
         "hostname": sanitize(guest.hostName) if guest and guest.hostName else None,
         "tools_status": str(guest.toolsRunningStatus) if guest else "N/A",
