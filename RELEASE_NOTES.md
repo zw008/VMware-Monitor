@@ -1,3 +1,13 @@
+## v1.5.21 (2026-05-08)
+
+**Feature**: Added `folder_path` field to VM inventory and `folder_filter` parameter for case-insensitive folder-tree search (community contribution from @gavinlinasd, PR #11).
+
+- **feat:** `list_vms()` and `get_vm_info()` now return a `folder_path` field showing each VM's vCenter inventory folder path (e.g. `/Colocation/Colo - ISER`). The path is also added to compact-mode output.
+- **feat:** New `folder_filter` parameter on `list_vms()` performs case-insensitive substring matching against `folder_path` — e.g. `folder_filter="Colocation"` returns VMs anywhere under any Colocation folder, including nested subfolders.
+- **feat:** `folder_path` added to `_VM_SORT_KEYS` so VMs can be sorted by folder.
+- **test:** 5 new unit tests for the `folder_path` helper covering root, single-level, nested, datacenter-name handling, and no-parent edge cases.
+- **deps:** Bumped `python-multipart` 0.0.26 → 0.0.27 (transitive, fixes GHSA HIGH DoS via unbounded multipart headers).
+
 ## v1.5.20 (2026-05-08)
 
 **Family alignment** — no source changes in this skill.

@@ -1,3 +1,3 @@
 """VMware Monitor - Read-only vCenter/ESXi monitoring. No destructive operations."""
 
-__version__ = "1.5.20"
+__version__ = "1.5.21"
