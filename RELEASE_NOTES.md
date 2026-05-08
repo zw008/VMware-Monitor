@@ -1,3 +1,10 @@
+## v1.5.20 (2026-05-08)
+
+**Family alignment** — no source changes in this skill.
+
+- **align:** Tracks v1.5.20 family bump driven by vmware-nsx-security and vmware-aria PyPI README `mcp-name:` ownership marker fix required by MCP Registry validation. Other 7 skills already had the marker; this release re-publishes them to keep the family version aligned per CLAUDE.md policy.
+- **registry:** All 9 skills now registered on registry.modelcontextprotocol.io as `isLatest=true`.
+
 ## v1.5.19 (2026-05-06)
 
 **Family alignment** — no source changes in this skill.
