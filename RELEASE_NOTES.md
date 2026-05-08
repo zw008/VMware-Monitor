@@ -1,3 +1,9 @@
+## v1.5.22 (2026-05-08)
+
+**Family alignment** — no source changes in this skill.
+
+- **align:** Tracks v1.5.22 family bump driven by Smithery onboarding for vmware-avi / vmware-harden / vmware-pilot.
+
 ## v1.5.21 (2026-05-08)
 
 **Feature**: Added `folder_path` field to VM inventory and `folder_filter` parameter for case-insensitive folder-tree search (community contribution from @gavinlinasd, PR #11).
