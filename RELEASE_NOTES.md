@@ -1,3 +1,10 @@
+## v1.5.24 (2026-05-19)
+
+**Family version alignment** — no code changes in this skill. Bumped together
+with VMware-AIops and VMware-VKS, which received a pyVmomi 8.x `ManagedObject`
+setattr fix (踩坑 #32). `family_smoke.sh` now enforces the no-setattr rule
+across all 9 skills.
+
 ## v1.5.23 (2026-05-19)
 
 **VCF 9.0 / 9.1 compatibility declared** — family-wide docs sync.
