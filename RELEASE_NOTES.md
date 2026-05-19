@@ -1,3 +1,11 @@
+## v1.5.23 (2026-05-19)
+
+**VCF 9.0 / 9.1 compatibility declared** — family-wide docs sync.
+
+- **docs:** README + `references/capabilities.md` version-compatibility tables now explicitly list vSphere 9.0 / 9.0U1 / 9.1 as ✅ Full. pyVmomi 8.0.3+ (currently pinned `<10.0`) continues to work against vSphere 9 SOAP API; all 8 read-only tools remain functional.
+- **docs:** Added `Official Broadcom References` pointer to [VCF Python SDK](https://developer.broadcom.com/sdks), [REST API portal](https://developer.broadcom.com/xapis), and [CLI tools](https://developer.broadcom.com/tools).
+- **align:** Family v1.5.23 — all 9 skills tracking VCF 9.0 / 9.1 compatibility declaration.
+
 ## v1.5.22 (2026-05-08)
 
 **Family alignment** — no source changes in this skill.

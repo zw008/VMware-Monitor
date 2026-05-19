@@ -87,12 +87,20 @@ ESXi Standalone ──→ VMs
 
 ### Version Compatibility
 
-| vSphere Version | Support | Notes |
+| vSphere / VCF Version | Support | Notes |
 |----------------|---------|-------|
+| VCF 9.1 / vSphere 9.1 | ✅ Full | Released 2026-05-12. pyVmomi `<10.0` resolves and connects via SOAP. |
+| VCF 9.0 / vSphere 9.0 | ✅ Full | pyVmomi 8.0.3+ connects against vSphere 9 SOAP API. |
 | 8.0 / 8.0U1-U3 | ✅ Full | pyVmomi 8.0.3+ |
 | 7.0 / 7.0U1-U3 | ✅ Full | All read-only APIs supported |
 | 6.7 | ✅ Compatible | Backward-compatible, tested |
 | 6.5 | ✅ Compatible | Backward-compatible, tested |
+
+#### Official Broadcom References
+
+- **SDKs**: <https://developer.broadcom.com/sdks> — VCF Python SDK (recommended for VCF 9+, bundles pyVmomi + vSAN SDK), vSphere Automation SDK for Python
+- **REST APIs**: <https://developer.broadcom.com/xapis> — vSphere Automation API, VCF API
+- **CLI Tools**: <https://developer.broadcom.com/tools> — PowerCLI 9.1, ESXCLI, OVF Tool
 
 ### 1. Inventory
 
