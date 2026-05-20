@@ -1,3 +1,28 @@
+## v1.5.26 (2026-05-20)
+
+**Family-wide MCP server fix — Python 3.10 compatibility (踩坑 #33)** — `vmware-monitor mcp`
+crashed at decorator time on Python 3.10 with `subclass() arg 1 must be a class`.
+Root cause: `mcp_server/server.py` used PEP 604 `X | None` in tool signatures
+plus `from __future__ import annotations`; on Python 3.10 + older mcp/pydantic
+combos, `typing.get_type_hints()` evaluates `"str | None"` to a
+`types.UnionType` instance, which FastMCP/Pydantic then feeds to `issubclass()`.
+Reported by a goose user (qwen3.6:27, Python 3.10).
+
+- `mcp_server/server.py`: all `X | None` → `Optional[X]`; ops layer untouched.
+- `<pkg>/cli.py` `mcp_cmd()`: hard guard — exits with installation fix command
+  if Python < 3.11 (defense in depth, our actual lower bound).
+- `pyproject.toml`: `mcp[cli]>=1.10,<2.0` (was `>=1.0`) so uv doesn't pick
+  an ancient version that has the same issubclass bug.
+
+**Tooling — family smoke gains MCP schema-build check** — `scripts/family_smoke.sh`
+new Check 4b runs `asyncio.run(mcp.list_tools())` per skill, forcing FastMCP to
+build Pydantic models for every declared tool. Supports both module-level `mcp`
+and `build_server()` factory patterns.
+
+**Docs — CLAUDE.md gains 踩坑 #33 (PEP 604 / Python 3.10) and #34 (CLI/MCP exposure parity).**
+
+---
+
 ## v1.5.24 (2026-05-19)
 
 **Family version alignment** — no code changes in this skill. Bumped together

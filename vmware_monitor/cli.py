@@ -463,6 +463,18 @@ def mcp_cmd() -> None:
 
     Equivalent to the legacy `vmware-monitor-mcp` console script.
     """
+    import sys
+    if sys.version_info < (3, 11):
+        msg = (
+            f"ERROR: vmware-monitor MCP server requires Python >= 3.11 "
+            f"(got {sys.version_info.major}.{sys.version_info.minor}).\n"
+            f"Interpreter: {sys.executable}\n"
+            "Fix: uv python install 3.12 && "
+            "uv tool install --python 3.12 --force vmware-monitor"
+        )
+        typer.echo(msg, err=True)
+        raise typer.Exit(2)
+
     from mcp_server.server import main as _mcp_main
 
     _mcp_main()

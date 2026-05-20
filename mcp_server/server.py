@@ -26,7 +26,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 # MCP SDK — Model Context Protocol server framework
 from mcp.server.fastmcp import FastMCP
@@ -59,10 +59,10 @@ mcp = FastMCP(
 # Connection helper
 # ---------------------------------------------------------------------------
 
-_conn_mgr: ConnectionManager | None = None
+_conn_mgr: Optional[ConnectionManager] = None
 
 
-def _get_connection(target: str | None = None) -> Any:
+def _get_connection(target: Optional[str] = None) -> Any:
     """Return a pyVmomi ServiceInstance, lazily initialising the manager."""
     global _conn_mgr  # noqa: PLW0603
     if _conn_mgr is None:
@@ -81,12 +81,12 @@ def _get_connection(target: str | None = None) -> Any:
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def list_virtual_machines(
-    target: str | None = None,
-    limit: int | None = None,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
     sort_by: str = "name",
-    power_state: str | None = None,
-    fields: list[str] | None = None,
-    folder_filter: str | None = None,
+    power_state: Optional[str] = None,
+    fields: Optional[list[str]] = None,
+    folder_filter: Optional[str] = None,
 ) -> dict:
     """[READ] List virtual machines with optional filtering, sorting, and field selection.
 
@@ -127,8 +127,8 @@ def list_virtual_machines(
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def list_esxi_hosts(
-    target: str | None = None,
-    limit: int | None = None,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
 ) -> list[dict]:
     """[READ] List ESXi hosts with CPU cores, memory, version, VM count, and uptime.
 
@@ -149,8 +149,8 @@ def list_esxi_hosts(
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def list_all_datastores(
-    target: str | None = None,
-    limit: int | None = None,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
 ) -> list[dict]:
     """[READ] List datastores with capacity, free space, type, and VM count.
 
@@ -171,8 +171,8 @@ def list_all_datastores(
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def list_all_clusters(
-    target: str | None = None,
-    limit: int | None = None,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
 ) -> list[dict]:
     """[READ] List clusters with host count, DRS/HA status, and resource totals.
 
@@ -198,8 +198,8 @@ def list_all_clusters(
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
 def get_alarms(
-    target: str | None = None,
-    limit: int | None = None,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
 ) -> list[dict]:
     """[READ] Get active/triggered alarms across the VMware inventory.
 
@@ -225,7 +225,7 @@ def get_alarms(
 def get_events(
     hours: int = 24,
     severity: str = "warning",
-    target: str | None = None,
+    target: Optional[str] = None,
 ) -> list[dict]:
     """[READ] Get recent vCenter/ESXi events filtered by severity.
 
@@ -248,7 +248,7 @@ def get_events(
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
-def vm_info(vm_name: str, target: str | None = None) -> dict:
+def vm_info(vm_name: str, target: Optional[str] = None) -> dict:
     """[READ] Get detailed information about a specific VM (CPU, memory, disks, NICs, snapshots).
 
     Args:
