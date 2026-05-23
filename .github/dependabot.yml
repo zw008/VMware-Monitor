@@ -10,13 +10,3 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "chore"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    labels:
-      - "dependencies"
-    commit-message:
-      prefix: "ci"
