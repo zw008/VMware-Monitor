@@ -1,3 +1,16 @@
+## v1.5.29 (2026-05-29) — `--folder-filter` CLI flag (CLI/MCP Parity)
+
+### New
+- `vmware-monitor inventory vms --folder-filter <pattern>` now exposes the case-insensitive folder-path filter that has been available via MCP since v1.5.21. Closes the CLI/MCP exposure asymmetry flagged in CLAUDE.md 踩坑 #34.
+- Table title shows `[folder~<pattern>]` marker when filter is active.
+
+### Tests
+- 7 new unit tests in `tests/test_folder_filter.py` covering: no-filter pass-through, prefix/case-insensitive/substring matches, no-match empty result, intersection with `power_state`, and CLI `--help` smoke containing `--folder-filter`.
+
+### Documentation
+- `references/cli-reference.md` drops the "MCP-only parameter" caveat and documents `--folder-filter` flag.
+- `references/capabilities.md` updates the `folder_filter` parameter row to "CLI `--folder-filter`, MCP `folder_filter`".
+
 ## v1.5.28 (2026-05-20)
 
 **Fix `subclass() arg 1 must be a class` in goose/old mcp environments** —
