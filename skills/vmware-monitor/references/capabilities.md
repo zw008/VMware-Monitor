@@ -22,11 +22,39 @@ Each operation is classified by autonomy level per the Enterprise Harness Engine
 
 | Feature | vCenter | ESXi | Details |
 |---------|:-------:|:----:|---------|
-| List VMs | Y | Y | Name, power state, CPU, memory, guest OS, IP |
+| List VMs | Y | Y | Name, power state, CPU, memory, guest OS, IP, `folder_path` (vCenter inventory folder, e.g. `/Datacenters/Production/Web Tier`) |
 | List Hosts | Y | Self only | CPU cores, memory, ESXi version, VM count, uptime |
 | List Datastores | Y | Y | Capacity, free/used, type (VMFS/NFS), usage % |
 | List Clusters | Y | N | Host count, DRS/HA status |
 | List Networks | Y | Y | Network name, associated VM count |
+
+### `list_vms` — input parameters
+
+| Parameter | Type | Default | Behavior |
+|-----------|------|---------|----------|
+| `target` | str (optional) | default target | Named vCenter/ESXi target from `config.yaml` |
+| `limit` | int (optional) | None (all) | Max VMs to return |
+| `sort_by` | str | `name` | `name` \| `cpu` \| `memory_mb` \| `power_state` \| `folder_path` |
+| `power_state` | str (optional) | None | `poweredOn` \| `poweredOff` \| `suspended` |
+| `fields` | list[str] (optional) | auto | Subset of: `name`, `power_state`, `cpu`, `memory_mb`, `guest_os`, `ip_address`, `host`, `uuid`, `tools_status`, `folder_path` |
+| `folder_filter` | str (optional) | None | **MCP-only.** Case-insensitive substring match against `folder_path`. Example: `folder_filter="Production"` returns VMs anywhere under any folder whose path contains "production" (including nested subfolders like `/Datacenters/Production/Web Tier`). |
+
+### `list_vms` — response fields
+
+Each VM dict in the `vms` array contains:
+
+| Field | Description |
+|-------|-------------|
+| `name` | VM name |
+| `power_state` | `poweredOn` / `poweredOff` / `suspended` |
+| `cpu` | vCPU count |
+| `memory_mb` | RAM in MB |
+| `guest_os` | Guest OS full name (full mode only) |
+| `ip_address` | Guest IP from VMware Tools (full mode only) |
+| `host` | ESXi host name (full mode only) |
+| `uuid` | VM UUID (full mode only) |
+| `tools_status` | VMware Tools running status (full mode only) |
+| `folder_path` | vCenter inventory folder path, e.g. `/Datacenters/Production/Web Tier`. Returned in both compact and full modes. |
 
 ## 2. Health & Monitoring
 
@@ -51,7 +79,7 @@ Each operation is classified by autonomy level per the Enterprise Harness Engine
 
 | Feature | Details |
 |---------|---------|
-| VM Info | Name, power state, guest OS, CPU, memory, IP, VMware Tools, disks, NICs |
+| VM Info | Name, power state, guest OS, CPU, memory, IP, VMware Tools, disks, NICs, `folder_path` |
 | Snapshot List | List existing snapshots with name and creation time (no create/revert/delete) |
 
 ## 4. Scheduled Scanning & Notifications

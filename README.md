@@ -106,7 +106,7 @@ ESXi Standalone ──→ VMs
 
 | Feature | vCenter | ESXi | Details |
 |---------|:-------:|:----:|---------|
-| List VMs | ✅ | ✅ | Name, power state, CPU, memory, guest OS, IP |
+| List VMs | ✅ | ✅ | Name, power state, CPU, memory, guest OS, IP, `folder_path` (vCenter inventory folder, e.g. `/Datacenters/Production/Web Tier`); MCP `list_virtual_machines` supports `folder_filter` for case-insensitive folder-tree search |
 | List Hosts | ✅ | ⚠️ Self only | CPU cores, memory, ESXi version, VM count, uptime |
 | List Datastores | ✅ | ✅ | Capacity, free/used, type (VMFS/NFS), usage % |
 | List Clusters | ✅ | ❌ | Host count, DRS/HA status |
@@ -135,7 +135,7 @@ ESXi Standalone ──→ VMs
 
 | Feature | Details |
 |---------|---------|
-| VM Info | Name, power state, guest OS, CPU, memory, IP, VMware Tools, disks, NICs |
+| VM Info | Name, power state, guest OS, CPU, memory, IP, VMware Tools, disks, NICs, `folder_path` |
 | Snapshot List | List existing snapshots with name and creation time (no create/revert/delete) |
 
 ### 4. Scheduled Scanning & Notifications
@@ -629,6 +629,9 @@ vmware-monitor mcp-config list                          # List all supported age
 vmware-monitor inventory vms [--target <name>]
 vmware-monitor inventory vms --limit 10 --sort-by memory_mb   # Top 10 VMs by memory
 vmware-monitor inventory vms --power-state poweredOn           # Only powered-on VMs
+vmware-monitor inventory vms --sort-by folder_path             # Group VMs by inventory folder
+# All `inventory vms` results include a `folder_path` field (e.g. `/Datacenters/Production/Web Tier`).
+# MCP tool `list_virtual_machines` additionally supports `folder_filter="Production"` for case-insensitive folder-tree search.
 vmware-monitor inventory hosts [--target <name>]
 vmware-monitor inventory datastores [--target <name>]
 vmware-monitor inventory clusters [--target <name>]

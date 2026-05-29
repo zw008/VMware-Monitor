@@ -127,7 +127,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 
 | Tool | Description |
 |------|------------|
-| `list_virtual_machines` | List VMs with filtering (power state, sort, limit) |
+| `list_virtual_machines` | List VMs with filtering (power state, sort, limit, `folder_filter` for case-insensitive folder-tree search); each VM includes `folder_path` |
 | `list_esxi_hosts` | ESXi hosts with CPU, memory, version, uptime |
 | `list_all_datastores` | Datastores with capacity, free space, type |
 | `list_all_clusters` | Clusters with host count, DRS/HA status |

@@ -92,7 +92,7 @@ ESXi 独立主机 ──→ VM
 
 | 功能 | vCenter | ESXi | 说明 |
 |------|:-------:|:----:|------|
-| 列出虚拟机 | ✅ | ✅ | 名称、电源状态、CPU、内存、操作系统、IP |
+| 列出虚拟机 | ✅ | ✅ | 名称、电源状态、CPU、内存、操作系统、IP、`folder_path`（vCenter 清单文件夹路径，如 `/Datacenters/Production/Web Tier`）；MCP `list_virtual_machines` 支持 `folder_filter` 参数进行大小写不敏感的文件夹树搜索 |
 | 列出主机 | ✅ | ⚠️ 仅自身 | CPU 核数、内存、版本、VM 数、在线时间 |
 | 列出数据存储 | ✅ | ✅ | 容量、已用/可用、类型、使用率 |
 | 列出集群 | ✅ | ❌ | 主机数、DRS/HA 状态 |
@@ -111,7 +111,7 @@ ESXi 独立主机 ──→ VM
 
 | 功能 | 说明 |
 |------|------|
-| VM 详情 | 名称、电源状态、操作系统、CPU、内存、IP、VMware Tools、磁盘、网卡 |
+| VM 详情 | 名称、电源状态、操作系统、CPU、内存、IP、VMware Tools、磁盘、网卡、`folder_path` |
 | 快照列表 | 列出已有快照名称和创建时间（无创建/恢复/删除） |
 
 ### 4. 定时扫描与通知
@@ -328,6 +328,9 @@ vmware-monitor mcp-config list                          # 列出所有支持的 
 vmware-monitor inventory vms|hosts|datastores|clusters [--target <name>]
 vmware-monitor inventory vms --limit 10 --sort-by memory_mb  # 按内存排序 Top 10
 vmware-monitor inventory vms --power-state poweredOn         # 只显示开机 VM
+vmware-monitor inventory vms --sort-by folder_path           # 按清单文件夹分组排序
+# 所有 `inventory vms` 结果均包含 `folder_path` 字段（如 `/Datacenters/Production/Web Tier`）。
+# MCP 工具 `list_virtual_machines` 额外支持 `folder_filter="Production"`，按文件夹路径大小写不敏感子串过滤。
 
 # 健康检查
 vmware-monitor health alarms [--target <name>]
