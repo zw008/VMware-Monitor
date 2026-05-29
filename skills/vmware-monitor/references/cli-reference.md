@@ -22,7 +22,7 @@ Generates MCP configuration files for supported agents. `list` shows all availab
 ## Inventory
 
 ```bash
-vmware-monitor inventory vms [--target <name>] [--limit <n>] [--sort-by name|cpu|memory_mb|power_state|folder_path] [--power-state poweredOn|poweredOff]
+vmware-monitor inventory vms [--target <name>] [--limit <n>] [--sort-by name|cpu|memory_mb|power_state|folder_path] [--power-state poweredOn|poweredOff] [--folder-filter <pattern>]
 vmware-monitor inventory hosts [--target <name>]
 vmware-monitor inventory datastores [--target <name>]
 vmware-monitor inventory clusters [--target <name>]
@@ -32,10 +32,9 @@ vmware-monitor inventory clusters [--target <name>]
 - `--limit`: Max VMs to return (default: unlimited)
 - `--sort-by`: Sort field for VM listing — `name` | `cpu` | `memory_mb` | `power_state` | `folder_path`
 - `--power-state`: Filter VMs by power state
+- `--folder-filter`: Case-insensitive substring match against `folder_path` (e.g. `--folder-filter "Production"` returns VMs anywhere under a folder containing "production", including nested subfolders like `/Datacenters/Production/Web Tier`).
 
 **Output fields** (CLI and MCP): each VM entry includes `folder_path` — the vCenter inventory folder path (e.g. `/Datacenters/Production/Web Tier`). Present in both compact and full modes.
-
-**MCP-only parameter**: the MCP tool `list_virtual_machines` exposes an additional `folder_filter` argument — case-insensitive substring match against `folder_path`. Example: `folder_filter="Production"` returns VMs anywhere under any folder containing "production" in its path, including nested subfolders.
 
 ## Health
 

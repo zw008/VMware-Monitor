@@ -37,7 +37,7 @@ Each operation is classified by autonomy level per the Enterprise Harness Engine
 | `sort_by` | str | `name` | `name` \| `cpu` \| `memory_mb` \| `power_state` \| `folder_path` |
 | `power_state` | str (optional) | None | `poweredOn` \| `poweredOff` \| `suspended` |
 | `fields` | list[str] (optional) | auto | Subset of: `name`, `power_state`, `cpu`, `memory_mb`, `guest_os`, `ip_address`, `host`, `uuid`, `tools_status`, `folder_path` |
-| `folder_filter` | str (optional) | None | **MCP-only.** Case-insensitive substring match against `folder_path`. Example: `folder_filter="Production"` returns VMs anywhere under any folder whose path contains "production" (including nested subfolders like `/Datacenters/Production/Web Tier`). |
+| `folder_filter` | str (optional) | None | Case-insensitive substring match against `folder_path` (CLI `--folder-filter`, MCP `folder_filter`). Example: `folder_filter="Production"` returns VMs anywhere under any folder whose path contains "production" (including nested subfolders like `/Datacenters/Production/Web Tier`). |
 
 ### `list_vms` — response fields
 

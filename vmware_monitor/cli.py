@@ -43,12 +43,8 @@ app.add_typer(vm_app, name="vm")
 app.add_typer(scan_app, name="scan")
 app.add_typer(daemon_app, name="daemon")
 
-TargetOption = Annotated[
-    str | None, typer.Option("--target", "-t", help="Target name from config")
-]
-ConfigOption = Annotated[
-    Path | None, typer.Option("--config", "-c", help="Config file path")
-]
+TargetOption = Annotated[str | None, typer.Option("--target", "-t", help="Target name from config")]
+ConfigOption = Annotated[Path | None, typer.Option("--config", "-c", help="Config file path")]
 
 
 def _get_connection(target: str | None, config_path: Path | None = None):
@@ -70,14 +66,33 @@ def inventory_vms(
     target: TargetOption = None,
     config: ConfigOption = None,
     limit: Annotated[int | None, typer.Option("--limit", "-n", help="Max VMs to show")] = None,
-    sort_by: Annotated[str, typer.Option("--sort-by", help="Sort by: name|cpu|memory_mb|power_state")] = "name",
-    power_state: Annotated[str | None, typer.Option("--power-state", help="Filter: poweredOn|poweredOff|suspended")] = None,
+    sort_by: Annotated[
+        str,
+        typer.Option("--sort-by", help="name|cpu|memory_mb|power_state|folder_path"),
+    ] = "name",
+    power_state: Annotated[
+        str | None,
+        typer.Option("--power-state", help="Filter: poweredOn|poweredOff|suspended"),
+    ] = None,
+    folder_filter: Annotated[
+        str | None,
+        typer.Option(
+            "--folder-filter",
+            help="Case-insensitive substring match on folder_path (e.g. 'Production')",
+        ),
+    ] = None,
 ) -> None:
     """List virtual machines."""
     from vmware_monitor.ops.inventory import list_vms
 
     si, _, tgt = _get_connection(target, config)
-    result = list_vms(si, limit=limit, sort_by=sort_by, power_state=power_state)
+    result = list_vms(
+        si,
+        limit=limit,
+        sort_by=sort_by,
+        power_state=power_state,
+        folder_filter=folder_filter,
+    )
     _audit.log_query(target=tgt, resource="virtual_machines", query_type="list_vms")
     vms = result["vms"]
     total = result["total"]
@@ -89,6 +104,8 @@ def inventory_vms(
     title += ")"
     if power_state:
         title += f" [{power_state}]"
+    if folder_filter:
+        title += f" [folder~{folder_filter}]"
     if limit:
         title += f" (top {limit})"
     table = Table(title=title)
@@ -143,9 +160,7 @@ def inventory_hosts(target: TargetOption = None, config: ConfigOption = None) ->
 
 
 @inventory_app.command("datastores")
-def inventory_datastores(
-    target: TargetOption = None, config: ConfigOption = None
-) -> None:
+def inventory_datastores(target: TargetOption = None, config: ConfigOption = None) -> None:
     """List all datastores."""
     from vmware_monitor.ops.inventory import list_datastores
 
@@ -172,9 +187,7 @@ def inventory_datastores(
 
 
 @inventory_app.command("clusters")
-def inventory_clusters(
-    target: TargetOption = None, config: ConfigOption = None
-) -> None:
+def inventory_clusters(target: TargetOption = None, config: ConfigOption = None) -> None:
     """List all clusters."""
     from vmware_monitor.ops.inventory import list_clusters
 
@@ -310,12 +323,8 @@ def scan_now(target: TargetOption = None, config: ConfigOption = None) -> None:
     else:
         console.print(f"[yellow]Found {total} issue(s).[/]")
         for r in alarm_results + log_results:
-            sev_style = {"critical": "red", "warning": "yellow"}.get(
-                r["severity"], "white"
-            )
-            console.print(
-                f"  [{sev_style}][{r['severity'].upper()}][/] {r['message']}"
-            )
+            sev_style = {"critical": "red", "warning": "yellow"}.get(r["severity"], "white")
+            console.print(f"  [{sev_style}][{r['severity'].upper()}][/] {r['message']}")
 
 
 # ─── Daemon ───────────────────────────────────────────────────────────────────
@@ -372,6 +381,7 @@ def doctor_cmd(
 ) -> None:
     """Check environment, config, connectivity, and daemon status."""
     from vmware_monitor.doctor import run_doctor
+
     raise typer.Exit(run_doctor(skip_auth=skip_auth))
 
 
@@ -398,7 +408,8 @@ def mcp_config_generate(
     agent: Annotated[
         str,
         typer.Option(
-            "--agent", "-a",
+            "--agent",
+            "-a",
             help="Target agent: goose, cursor, claude-code, continue, vscode-copilot, localcowork, mcp-agent",
         ),
     ],
@@ -464,6 +475,7 @@ def mcp_cmd() -> None:
     Equivalent to the legacy `vmware-monitor-mcp` console script.
     """
     import sys
+
     if sys.version_info < (3, 10):
         msg = (
             f"ERROR: vmware-monitor MCP server requires Python >= 3.10 "
