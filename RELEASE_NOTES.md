@@ -1,3 +1,8 @@
+## v1.5.30 (2026-06-07) — Family version alignment
+
+No functional changes. Version-alignment release with the v1.5.30 family
+(tool description quality + NSX fixes in sibling skills).
+
 ## v1.5.29 (2026-05-29) — `--folder-filter` CLI flag (CLI/MCP Parity)
 
 ### New
