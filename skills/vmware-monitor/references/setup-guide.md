@@ -92,7 +92,7 @@ For Claude Code / Cursor users who prefer structured tool calls, add to `~/.clau
 > PyPI on each launch and breaks behind corporate TLS proxies. The legacy
 > `vmware-monitor-mcp` entry point is also kept for backward compatibility.
 
-MCP exposes 7 read-only tools: `list_virtual_machines`, `list_esxi_hosts`, `list_all_datastores`, `list_all_clusters`, `get_alarms`, `get_events`, `vm_info`. All accept optional `target` parameter.
+MCP exposes 8 read-only tools: `list_virtual_machines`, `list_esxi_hosts`, `list_all_datastores`, `list_all_clusters`, `get_alarms`, `get_events`, `vm_info`, `vm_list_snapshots`. All accept optional `target` parameter.
 
 `list_virtual_machines` supports `limit`, `sort_by`, `power_state`, `fields` for compact context in large inventories.
 

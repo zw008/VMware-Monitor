@@ -55,7 +55,7 @@ vmware-monitor vm snapshot-list <vm-name> [--target <name>]
 
 Returns detailed VM information: CPU, memory, disks, NICs, guest OS, IP, VMware Tools status, and snapshots.
 
-`snapshot-list` lists existing snapshots with name and creation time. No create, revert, or delete operations exist.
+`snapshot-list` lists existing snapshots with name and creation time. No create, revert, or delete operations exist. The same data is exposed via the MCP tool `vm_list_snapshots`.
 
 ## Scanning & Daemon
 

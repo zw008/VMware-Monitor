@@ -62,7 +62,7 @@ Each VM dict in the `vms` array contains:
 |---------|:-------:|:----:|---------|
 | Active Alarms | Y | Y | Severity, alarm name, entity, timestamp |
 | Event/Log Query | Y | Y | Filter by time range, severity; 50+ event types |
-| Hardware Sensors | Y | Y | Temperature, voltage, fan status |
+| Hardware Sensors | Y | Y | Per-sensor `type` (temperature/voltage/fan...), reading, unit, and health `status` (green/yellow/red) |
 | Host Services | Y | Y | hostd, vpxa running/stopped status |
 
 ### Monitored Event Types
@@ -80,7 +80,7 @@ Each VM dict in the `vms` array contains:
 | Feature | Details |
 |---------|---------|
 | VM Info | Name, power state, guest OS, CPU, memory, IP, VMware Tools, disks, NICs, `folder_path` |
-| Snapshot List | List existing snapshots with name and creation time (no create/revert/delete) |
+| Snapshot List | List existing snapshots with name and creation time (no create/revert/delete) — CLI `vm snapshot-list`, MCP tool `vm_list_snapshots` |
 
 ## 4. Scheduled Scanning & Notifications
 

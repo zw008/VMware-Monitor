@@ -134,6 +134,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | `get_alarms` | All active/triggered alarms — includes `suggested_actions` remediation hints |
 | `get_events` | Recent events filtered by severity and time — includes `suggested_actions` hints |
 | `vm_info` | Detailed VM info (CPU, memory, disks, NICs, snapshots) |
+| `vm_list_snapshots` | Snapshot list for one VM with nesting hierarchy (read-only) |
 
 All tools are **read-only**. No tool can modify, create, or delete any resource.
 

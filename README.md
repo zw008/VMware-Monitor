@@ -118,7 +118,7 @@ ESXi Standalone ──→ VMs
 |---------|:-------:|:----:|---------|
 | Active Alarms | ✅ | ✅ | Severity, alarm name, entity, timestamp |
 | Event/Log Query | ✅ | ✅ | Filter by time range, severity; 50+ event types |
-| Hardware Sensors | ✅ | ✅ | Temperature, voltage, fan status |
+| Hardware Sensors | ✅ | ✅ | Per-sensor `type` (temperature/voltage/fan...), reading, unit, and health `status` (green/yellow/red) |
 | Host Services | ✅ | ✅ | hostd, vpxa running/stopped status |
 
 **Monitored Event Types:**
@@ -136,7 +136,7 @@ ESXi Standalone ──→ VMs
 | Feature | Details |
 |---------|---------|
 | VM Info | Name, power state, guest OS, CPU, memory, IP, VMware Tools, disks, NICs, `folder_path` |
-| Snapshot List | List existing snapshots with name and creation time (no create/revert/delete) |
+| Snapshot List | List existing snapshots with name and creation time (no create/revert/delete) — CLI `vm snapshot-list`, MCP tool `vm_list_snapshots` |
 
 ### 4. Scheduled Scanning & Notifications
 

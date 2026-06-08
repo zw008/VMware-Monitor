@@ -26,7 +26,7 @@ WARNING_EVENTS = {
     "DrsVmMigratedEvent",
     "DrsSoftRuleViolationEvent",
     "VmFailedToRebootGuestEvent",
-    "DVPortGroupReconfiguredEvent",
+    "DVPortgroupReconfiguredEvent",
     "VmGuestShutdownEvent",
     "HostIpChangedEvent",
     "BadUsernameSessionEvent",
@@ -200,10 +200,14 @@ def get_host_hardware_status(si: ServiceInstance) -> list[dict]:
             if not runtime_health or not runtime_health.systemHealthInfo:
                 continue
             for sensor in runtime_health.systemHealthInfo.numericSensorInfo:
-                status = str(sensor.sensorType) if hasattr(sensor, "sensorType") else "unknown"
+                # Health (green/yellow/red) lives in healthState.key;
+                # sensorType is the category (temperature/voltage/fan...).
+                health = getattr(sensor, "healthState", None)
+                status = str(health.key) if health is not None else "unknown"
                 results.append({
                     "host": sanitize(host.name),
                     "sensor_name": sanitize(sensor.name),
+                    "type": str(getattr(sensor, "sensorType", "unknown")),
                     "reading": sensor.currentReading,
                     "unit": sensor.baseUnits,
                     "status": status,

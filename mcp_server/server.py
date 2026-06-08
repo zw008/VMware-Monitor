@@ -41,7 +41,7 @@ from vmware_monitor.ops.inventory import (
     list_hosts,
     list_vms,
 )
-from vmware_monitor.ops.vm_info import get_vm_info
+from vmware_monitor.ops.vm_info import get_vm_info, list_snapshots
 
 logger = logging.getLogger(__name__)
 
@@ -259,6 +259,29 @@ def vm_info(vm_name: str, target: Optional[str] = None) -> dict:
         return get_vm_info(si, vm_name)
     except Exception as e:
         return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+
+
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@vmware_tool(risk_level="low")
+def vm_list_snapshots(vm_name: str, target: Optional[str] = None) -> list[dict]:
+    """[READ] List all snapshots of a VM, including the nesting hierarchy.
+
+    Returns one entry per snapshot with name, description, created timestamp,
+    state, and level (0 = root; children are level+1). Returns an empty list
+    when the VM has no snapshots. Read-only — this skill cannot create,
+    revert, or delete snapshots (use vmware-aiops for those operations).
+    Exposes the same data as the CLI command `vmware-monitor vm snapshot-list`
+    (was missing from MCP until 2026-06-08 — CLI/MCP parity, 踩坑 #34).
+
+    Args:
+        vm_name: Exact name of the virtual machine.
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    try:
+        si = _get_connection(target)
+        return list_snapshots(si, vm_name)
+    except Exception as e:
+        return [{"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}]
 
 
 # ---------------------------------------------------------------------------

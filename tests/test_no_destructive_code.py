@@ -5,8 +5,11 @@ that no destructive operations exist anywhere in the codebase.
 """
 
 import subprocess
+from pathlib import Path
 
 import pytest
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Patterns that indicate actual destructive code (function definitions and API calls)
 DESTRUCTIVE_PATTERNS = [
@@ -54,7 +57,7 @@ def test_no_destructive_code_in_vmware_monitor() -> None:
             ["grep", "-rn", "--include=*.py", pattern, "vmware_monitor/"],
             capture_output=True,
             text=True,
-            cwd="/Users/zw/testany/myskills/VMware-Monitor",
+            cwd=REPO_ROOT,
         )
         assert result.stdout == "", (
             f"Destructive pattern '{pattern}' found in vmware_monitor/:\n{result.stdout}"
@@ -69,7 +72,7 @@ def test_no_destructive_code_in_mcp_server() -> None:
             ["grep", "-rn", "--include=*.py", pattern, "mcp_server/"],
             capture_output=True,
             text=True,
-            cwd="/Users/zw/testany/myskills/VMware-Monitor",
+            cwd=REPO_ROOT,
         )
         assert result.stdout == "", (
             f"Destructive pattern '{pattern}' found in mcp_server/:\n{result.stdout}"
