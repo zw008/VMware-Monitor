@@ -1,3 +1,20 @@
+## v1.5.32 (2026-06-08) — Sensor health fix + missing snapshot-list MCP tool added
+
+### Fixed
+- Hardware sensors: health from `healthState.key` (green/yellow/red) — the
+  previous code reported the sensor category as its status. Sensor type kept
+  as a separate column.
+- Event severity sets: `DVPortgroupReconfiguredEvent` casing (never matched).
+
+### Added
+- `vm_list_snapshots` MCP tool — the CLI had `vm snapshot-list` but the MCP
+  server never registered it; docs claimed 8 tools while 7 existed (CLI/MCP
+  parity). All 8 tools remain strictly read-only.
+
+### Tests
+- vim-attribute conformance regression (shared family defense); stale
+  hardcoded repo path in the zero-destructive-code test fixed.
+
 ## v1.5.30 (2026-06-07) — Family version alignment
 
 No functional changes. Version-alignment release with the v1.5.30 family
