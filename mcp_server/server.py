@@ -29,7 +29,7 @@ from typing import Any, Optional
 
 # MCP SDK — Model Context Protocol server framework
 from mcp.server.fastmcp import FastMCP
-from vmware_policy import vmware_tool
+from vmware_policy import sanitize, vmware_tool
 
 # Internal VMware monitoring modules (all read-only operations)
 from vmware_monitor.config import load_config
@@ -44,6 +44,20 @@ from vmware_monitor.ops.inventory import (
 from vmware_monitor.ops.vm_info import get_vm_info, list_snapshots
 
 logger = logging.getLogger(__name__)
+
+def _safe_error(exc: Exception, tool: str) -> str:
+    """Return an agent-safe error string; log full detail server-side only.
+
+    Raw exception text can carry API response bodies, internal paths, or
+    host:port pairs. Full traceback goes to the server log; the agent sees only
+    a control-char-stripped, length-capped message. Intentional validation
+    errors (ValueError/FileNotFoundError/KeyError/PermissionError) pass through.
+    """
+    logger.error("Tool %s failed", tool, exc_info=True)
+    if isinstance(exc, (ValueError, FileNotFoundError, KeyError, PermissionError)):
+        return sanitize(str(exc), 300)
+    return f"{type(exc).__name__}: operation failed."
+
 
 mcp = FastMCP(
     "vmware-monitor",
@@ -120,7 +134,7 @@ def list_virtual_machines(
             folder_filter=folder_filter,
         )
     except Exception as e:
-        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
@@ -142,7 +156,7 @@ def list_esxi_hosts(
             results = results[:limit]
         return results
     except Exception as e:
-        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
@@ -164,7 +178,7 @@ def list_all_datastores(
             results = results[:limit]
         return results
     except Exception as e:
-        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
@@ -186,7 +200,7 @@ def list_all_clusters(
             results = results[:limit]
         return results
     except Exception as e:
-        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +230,7 @@ def get_alarms(
             results = results[:limit]
         return results
     except Exception as e:
-        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
@@ -237,7 +251,7 @@ def get_events(
         si = _get_connection(target)
         return get_recent_events(si, hours=hours, severity=severity)
     except Exception as e:
-        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +272,7 @@ def vm_info(vm_name: str, target: Optional[str] = None) -> dict:
         si = _get_connection(target)
         return get_vm_info(si, vm_name)
     except Exception as e:
-        return {"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
@@ -281,7 +295,7 @@ def vm_list_snapshots(vm_name: str, target: Optional[str] = None) -> list[dict]:
         si = _get_connection(target)
         return list_snapshots(si, vm_name)
     except Exception as e:
-        return [{"error": str(e), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}]
+        return [{"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}]
 
 
 # ---------------------------------------------------------------------------

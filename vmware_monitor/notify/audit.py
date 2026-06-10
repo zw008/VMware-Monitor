@@ -5,6 +5,7 @@ from __future__ import annotations
 import getpass
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,12 @@ class AuditLogger:
 
     def __init__(self, log_file: str = "~/.vmware-monitor/audit.log") -> None:
         self._path = Path(log_file).expanduser()
-        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        # mkdir mode is masked by umask; enforce owner-only explicitly.
+        try:
+            os.chmod(self._path.parent, 0o700)
+        except OSError:
+            pass
         self._logger = logging.getLogger("vmware-monitor.audit")
 
     def log(
@@ -49,8 +55,14 @@ class AuditLogger:
             "user": user or _current_user(),
         }
 
+        existed = self._path.exists()
         with open(self._path, "a") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        if not existed:
+            try:
+                os.chmod(self._path, 0o600)
+            except OSError:
+                pass
 
         self._logger.info(
             "[AUDIT] %s %s on %s (%s) -> %s",

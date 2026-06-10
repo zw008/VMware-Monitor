@@ -1,3 +1,12 @@
+## v1.5.35 (2026-06-10) — security hardening: safe errors, webhook & PID hygiene
+
+### Fixed
+- **MCP tools route errors through `_safe_error()`** (no raw exception text to the agent).
+- **Audit** dir 0700 / log 0600; **PID-file** directory created 0700.
+- **Webhook** response bodies CR/LF-stripped before logging.
+
+This release aligns the whole family back to a single version (1.5.35); vmware-policy and vmware-pilot return to the shared number after sitting at 1.5.22.
+
 ## v1.5.32 (2026-06-08) — Sensor health fix + missing snapshot-list MCP tool added
 
 ### Fixed

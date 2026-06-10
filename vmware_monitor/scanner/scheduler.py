@@ -94,8 +94,12 @@ def start_scheduler(config_path: Path | None = None) -> None:
         logger.warning("Scanner is disabled in config. Exiting.")
         return
 
-    # Write PID file
-    PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+    # Write PID file (owner-only dir; PID itself is not sensitive)
+    PID_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        os.chmod(PID_FILE.parent, 0o700)
+    except OSError:
+        pass
     PID_FILE.write_text(str(os.getpid()))
 
     scheduler = BlockingScheduler()
