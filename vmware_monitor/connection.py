@@ -91,7 +91,15 @@ class ConnectionManager:
             sslContext=context,
             disableSslCertValidation=not target.verify_ssl,
         )
-        atexit.register(Disconnect, si)
+        def _cleanup(_si: ServiceInstance = si) -> None:
+            # Sessions may already be dead at interpreter exit (timeout,
+            # server restart) — never spray tracebacks during shutdown.
+            try:
+                Disconnect(_si)
+            except Exception:
+                pass
+
+        atexit.register(_cleanup)
         return si
 
 

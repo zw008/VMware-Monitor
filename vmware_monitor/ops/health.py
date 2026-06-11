@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
-from pyVmomi import vim
+from pyVmomi import vim, vmodl
 from vmware_policy import sanitize
 
 if TYPE_CHECKING:
@@ -59,6 +59,25 @@ _EVENT_SUGGESTIONS: dict[str, str] = {
 }
 
 
+# Faults raised by QueryEvents on standalone ESXi (no event manager support).
+# Only these mean "no events available here" — auth/network errors must
+# propagate, otherwise a monitoring tool reports all-clear on failure.
+# (vim.fault has no NotSupported class; vmodl.fault.NotSupported is the one.)
+_NOT_SUPPORTED_FAULTS: tuple[type[Exception], ...] = (vmodl.fault.NotSupported,)
+
+
+def query_events(event_mgr: vim.event.EventManager, filter_spec: vim.event.EventFilterSpec) -> list:
+    """QueryEvents wrapper shared by ops.health and scanner.log_scanner.
+
+    Standalone ESXi does not support QueryEvents — treat NotSupported as
+    "no events". Everything else (auth, network, permission) re-raises.
+    """
+    try:
+        return event_mgr.QueryEvents(filter_spec)
+    except _NOT_SUPPORTED_FAULTS:
+        return []
+
+
 def _get_event_entity(event: object) -> str | None:
     """Extract entity name from a pyVmomi event object."""
     for attr in ("vm", "host", "ds", "computeResource", "net"):
@@ -80,7 +99,14 @@ def get_active_alarms(si: ServiceInstance) -> list[dict]:
         for alarm_state in entity.triggeredAlarmState:
             severity = str(alarm_state.overallStatus)
             severity_map = {"red": "critical", "yellow": "warning", "green": "info"}
-            entity_name = sanitize(alarm_state.entity.name)
+            # entity.name is a server round-trip that can fail for entities
+            # the session cannot access — one bad entity must not kill the
+            # whole alarm listing.
+            try:
+                raw_entity_name = getattr(alarm_state.entity, "name", None)
+            except Exception:
+                raw_entity_name = None
+            entity_name = sanitize(raw_entity_name) if raw_entity_name else "[inaccessible]"
             alarm_name = sanitize(alarm_state.alarm.info.name)
             acknowledged = getattr(alarm_state, "acknowledged", False)
 
@@ -146,11 +172,7 @@ def get_recent_events(
         time=vim.event.EventFilterSpec.ByTime(beginTime=begin, endTime=now)
     )
 
-    try:
-        events = event_mgr.QueryEvents(filter_spec)
-    except Exception:
-        # Standalone ESXi does not support QueryEvents
-        return []
+    events = query_events(event_mgr, filter_spec)
     min_level = SEVERITY_ORDER.get(severity, 1)
 
     results = []

@@ -22,10 +22,11 @@ License: MIT
 """
 
 
+import functools
 import logging
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 # MCP SDK — Model Context Protocol server framework
 from mcp.server.fastmcp import FastMCP
@@ -57,6 +58,32 @@ def _safe_error(exc: Exception, tool: str) -> str:
     if isinstance(exc, (ValueError, FileNotFoundError, KeyError, PermissionError)):
         return sanitize(str(exc), 300)
     return f"{type(exc).__name__}: operation failed."
+
+
+_DOCTOR_HINT = "Run 'vmware-monitor doctor' to verify connectivity and credentials."
+
+
+def _catch_tool_errors(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Translate tool exceptions into an error payload shaped like the tool's
+    return annotation.
+
+    Tools annotated ``-> list[dict]`` must return a *list* on error too —
+    returning a bare error dict trips FastMCP structured-output validation,
+    raising ToolError so the teaching hint never reaches the agent. Also
+    passes the real tool name (fn.__name__) to _safe_error instead of the
+    old literal "monitor".
+    """
+    returns_list = str(fn.__annotations__.get("return", "")).startswith("list")
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            err = {"error": _safe_error(e, fn.__name__), "hint": _DOCTOR_HINT}
+            return [err] if returns_list else err
+
+    return wrapper
 
 
 mcp = FastMCP(
@@ -93,6 +120,7 @@ def _get_connection(target: Optional[str] = None) -> Any:
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
+@_catch_tool_errors
 def list_virtual_machines(
     target: Optional[str] = None,
     limit: Optional[int] = None,
@@ -123,22 +151,20 @@ def list_virtual_machines(
             Example: ``folder_filter="Colocation"`` returns VMs anywhere under
             a Colocation folder, including nested subfolders.
     """
-    try:
-        si = _get_connection(target)
-        return list_vms(
-            si,
-            limit=limit,
-            sort_by=sort_by,
-            power_state=power_state,
-            fields=fields,
-            folder_filter=folder_filter,
-        )
-    except Exception as e:
-        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+    si = _get_connection(target)
+    return list_vms(
+        si,
+        limit=limit,
+        sort_by=sort_by,
+        power_state=power_state,
+        fields=fields,
+        folder_filter=folder_filter,
+    )
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
+@_catch_tool_errors
 def list_esxi_hosts(
     target: Optional[str] = None,
     limit: Optional[int] = None,
@@ -149,18 +175,16 @@ def list_esxi_hosts(
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of hosts to return (None = all).
     """
-    try:
-        si = _get_connection(target)
-        results = list_hosts(si)
-        if limit is not None:
-            results = results[:limit]
-        return results
-    except Exception as e:
-        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+    si = _get_connection(target)
+    results = list_hosts(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
+@_catch_tool_errors
 def list_all_datastores(
     target: Optional[str] = None,
     limit: Optional[int] = None,
@@ -171,18 +195,16 @@ def list_all_datastores(
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of datastores to return (None = all).
     """
-    try:
-        si = _get_connection(target)
-        results = list_datastores(si)
-        if limit is not None:
-            results = results[:limit]
-        return results
-    except Exception as e:
-        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+    si = _get_connection(target)
+    results = list_datastores(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
+@_catch_tool_errors
 def list_all_clusters(
     target: Optional[str] = None,
     limit: Optional[int] = None,
@@ -193,14 +215,11 @@ def list_all_clusters(
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of clusters to return (None = all).
     """
-    try:
-        si = _get_connection(target)
-        results = list_clusters(si)
-        if limit is not None:
-            results = results[:limit]
-        return results
-    except Exception as e:
-        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+    si = _get_connection(target)
+    results = list_clusters(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +229,7 @@ def list_all_clusters(
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
+@_catch_tool_errors
 def get_alarms(
     target: Optional[str] = None,
     limit: Optional[int] = None,
@@ -223,18 +243,16 @@ def get_alarms(
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of alarms to return (None = all). Use when many alarms are active.
     """
-    try:
-        si = _get_connection(target)
-        results = get_active_alarms(si)
-        if limit is not None:
-            results = results[:limit]
-        return results
-    except Exception as e:
-        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+    si = _get_connection(target)
+    results = get_active_alarms(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
+@_catch_tool_errors
 def get_events(
     hours: int = 24,
     severity: str = "warning",
@@ -247,11 +265,8 @@ def get_events(
         severity: Minimum severity level: "critical", "warning", or "info".
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
     """
-    try:
-        si = _get_connection(target)
-        return get_recent_events(si, hours=hours, severity=severity)
-    except Exception as e:
-        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+    si = _get_connection(target)
+    return get_recent_events(si, hours=hours, severity=severity)
 
 
 # ---------------------------------------------------------------------------
@@ -261,6 +276,7 @@ def get_events(
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
+@_catch_tool_errors
 def vm_info(vm_name: str, target: Optional[str] = None) -> dict:
     """[READ] Get detailed information about a specific VM (CPU, memory, disks, NICs, snapshots).
 
@@ -268,15 +284,13 @@ def vm_info(vm_name: str, target: Optional[str] = None) -> dict:
         vm_name: Exact name of the virtual machine.
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
     """
-    try:
-        si = _get_connection(target)
-        return get_vm_info(si, vm_name)
-    except Exception as e:
-        return {"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}
+    si = _get_connection(target)
+    return get_vm_info(si, vm_name)
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 @vmware_tool(risk_level="low")
+@_catch_tool_errors
 def vm_list_snapshots(vm_name: str, target: Optional[str] = None) -> list[dict]:
     """[READ] List all snapshots of a VM, including the nesting hierarchy.
 
@@ -291,11 +305,8 @@ def vm_list_snapshots(vm_name: str, target: Optional[str] = None) -> list[dict]:
         vm_name: Exact name of the virtual machine.
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
     """
-    try:
-        si = _get_connection(target)
-        return list_snapshots(si, vm_name)
-    except Exception as e:
-        return [{"error": _safe_error(e, "monitor"), "hint": "Run 'vmware-monitor doctor' to verify connectivity and credentials."}]
+    si = _get_connection(target)
+    return list_snapshots(si, vm_name)
 
 
 # ---------------------------------------------------------------------------

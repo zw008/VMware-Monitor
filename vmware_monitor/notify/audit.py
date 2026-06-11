@@ -6,6 +6,7 @@ import getpass
 import json
 import logging
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -20,12 +21,18 @@ class AuditLogger:
 
     def __init__(self, log_file: str = "~/.vmware-monitor/audit.log") -> None:
         self._path = Path(log_file).expanduser()
-        self._path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        # mkdir mode is masked by umask; enforce owner-only explicitly.
+        # Audit setup failure must never block read commands (family rule:
+        # audit write failures degrade to a stderr warning).
         try:
+            self._path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            # mkdir mode is masked by umask; enforce owner-only explicitly.
             os.chmod(self._path.parent, 0o700)
-        except OSError:
-            pass
+        except OSError as e:
+            print(
+                f"[vmware-monitor] WARNING: cannot prepare audit log dir ({e}); "
+                "continuing without audit logging.",
+                file=sys.stderr,
+            )
         self._logger = logging.getLogger("vmware-monitor.audit")
 
     def log(
@@ -55,14 +62,23 @@ class AuditLogger:
             "user": user or _current_user(),
         }
 
-        existed = self._path.exists()
-        with open(self._path, "a") as fh:
-            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        if not existed:
-            try:
-                os.chmod(self._path, 0o600)
-            except OSError:
-                pass
+        # Audit write failure must never block the main (read-only) operation
+        # — degrade to a stderr warning and continue (family rule).
+        try:
+            existed = self._path.exists()
+            with open(self._path, "a") as fh:
+                fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            if not existed:
+                try:
+                    os.chmod(self._path, 0o600)
+                except OSError:
+                    pass
+        except OSError as e:
+            print(
+                f"[vmware-monitor] WARNING: audit log write failed ({e}); "
+                "operation continues without audit entry.",
+                file=sys.stderr,
+            )
 
         self._logger.info(
             "[AUDIT] %s %s on %s (%s) -> %s",

@@ -17,7 +17,7 @@ from pyVmomi import vim
 from vmware_policy import sanitize
 
 from vmware_monitor.config import ScannerConfig
-from vmware_monitor.ops.health import CRITICAL_EVENTS, WARNING_EVENTS
+from vmware_monitor.ops.health import CRITICAL_EVENTS, WARNING_EVENTS, query_events
 
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
@@ -43,7 +43,9 @@ def scan_logs(
         time=vim.event.EventFilterSpec.ByTime(beginTime=begin, endTime=now)
     )
 
-    events = event_mgr.QueryEvents(filter_spec)
+    # Shared guard: NotSupported (standalone ESXi) → no events; auth/network
+    # failures re-raise so the scan cycle reports them instead of "all clear".
+    events = query_events(event_mgr, filter_spec)
     threshold = scanner_config.severity_threshold
     severity_rank = {"critical": 0, "warning": 1, "info": 2}
     min_rank = severity_rank.get(threshold, 1)

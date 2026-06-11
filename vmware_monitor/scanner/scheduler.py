@@ -65,9 +65,12 @@ def _run_scan(config: AppConfig, conn_mgr: ConnectionManager) -> None:
         except Exception as e:
             logger.error("Host log scan failed for %s: %s", target_name, e)
 
-    # Log all issues
+    # Log all issues — one bad write must not discard the rest of the cycle
     for issue in all_issues:
-        scan_logger.log_issue(issue)
+        try:
+            scan_logger.log_issue(issue)
+        except Exception as e:
+            logger.error("Failed to log issue %r: %s", issue.get("message", "?"), e)
 
     # Send webhook if there are critical/warning issues
     important = [i for i in all_issues if i["severity"] in ("critical", "warning")]
@@ -94,14 +97,6 @@ def start_scheduler(config_path: Path | None = None) -> None:
         logger.warning("Scanner is disabled in config. Exiting.")
         return
 
-    # Write PID file (owner-only dir; PID itself is not sensitive)
-    PID_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    try:
-        os.chmod(PID_FILE.parent, 0o700)
-    except OSError:
-        pass
-    PID_FILE.write_text(str(os.getpid()))
-
     scheduler = BlockingScheduler()
     scheduler.add_job(
         _run_scan,
@@ -113,14 +108,6 @@ def start_scheduler(config_path: Path | None = None) -> None:
         next_run_time=None,  # Scheduler interval starts after manual first run below
     )
 
-    # Run first scan immediately, then scheduler takes over
-    logger.info(
-        "Scanner starting. Interval: %dm. Targets: %s",
-        config.scanner.interval_minutes,
-        ", ".join(conn_mgr.list_targets()),
-    )
-    _run_scan(config, conn_mgr)
-
     def _shutdown(signum, frame):
         logger.info("Shutting down scanner...")
         scheduler.shutdown(wait=False)
@@ -128,10 +115,29 @@ def start_scheduler(config_path: Path | None = None) -> None:
         conn_mgr.disconnect_all()
         sys.exit(0)
 
+    # Register signal handlers BEFORE the PID file is written and the first
+    # scan runs — otherwise a SIGTERM during the initial scan leaves a stale
+    # PID file behind.
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
 
+    # Write PID file (owner-only dir; PID itself is not sensitive)
+    PID_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     try:
+        os.chmod(PID_FILE.parent, 0o700)
+    except OSError:
+        pass
+    PID_FILE.write_text(str(os.getpid()))
+
+    try:
+        # Run first scan immediately, then scheduler takes over. Inside the
+        # try so a crash during the first scan still removes the PID file.
+        logger.info(
+            "Scanner starting. Interval: %dm. Targets: %s",
+            config.scanner.interval_minutes,
+            ", ".join(conn_mgr.list_targets()),
+        )
+        _run_scan(config, conn_mgr)
         scheduler.start()
     finally:
         PID_FILE.unlink(missing_ok=True)

@@ -10,9 +10,10 @@ This CLI contains ONLY read-only commands. No destructive operations exist:
 
 from __future__ import annotations
 
+import functools
 import signal
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, Callable
 
 import typer
 from rich.console import Console
@@ -47,6 +48,56 @@ TargetOption = Annotated[str | None, typer.Option("--target", "-t", help="Target
 ConfigOption = Annotated[Path | None, typer.Option("--config", "-c", help="Config file path")]
 
 
+def _fail(message: str) -> None:
+    """Print one red teaching line and exit 1 (no traceback)."""
+    console.print(f"[red]{message}[/red]")
+    raise typer.Exit(1)
+
+
+def _cli_errors(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Translate known failures into one red teaching line + exit 1.
+
+    Without this, config/auth/network problems surface as raw tracebacks.
+    Catches: FileNotFoundError, KeyError, OSError (incl. socket errors and
+    ConnectionError), VMNotFoundError, and vim/vmodl API faults.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        from pyVmomi import vmodl
+
+        from vmware_monitor.ops.vm_info import VMNotFoundError
+
+        try:
+            return fn(*args, **kwargs)
+        except typer.Exit:
+            raise
+        except VMNotFoundError as e:
+            _fail(f"{e}. Run 'vmware-monitor inventory vms' to see available VMs.")
+        except FileNotFoundError as e:
+            _fail(
+                f"Config file missing: {e}. Run: mkdir -p ~/.vmware-monitor && "
+                "cp config.example.yaml ~/.vmware-monitor/config.yaml"
+            )
+        except KeyError as e:
+            _fail(
+                f"Missing config key or password env var: {e}. "
+                "Check ~/.vmware-monitor/config.yaml and ~/.vmware-monitor/.env."
+            )
+        except vmodl.MethodFault as e:
+            _fail(
+                f"vSphere API fault: {getattr(e, 'msg', None) or type(e).__name__}. "
+                "Run 'vmware-monitor doctor' to verify connectivity and credentials."
+            )
+        except (ConnectionError, OSError) as e:
+            _fail(
+                f"Connection failed: {e}. "
+                "Run 'vmware-monitor doctor' to verify connectivity and credentials."
+            )
+
+    return wrapper
+
+
 def _get_connection(target: str | None, config_path: Path | None = None):
     """Helper to get a pyVmomi connection.  Returns (si, cfg, target_name)."""
     from vmware_monitor.config import load_config
@@ -62,6 +113,7 @@ def _get_connection(target: str | None, config_path: Path | None = None):
 
 
 @inventory_app.command("vms")
+@_cli_errors
 def inventory_vms(
     target: TargetOption = None,
     config: ConfigOption = None,
@@ -134,6 +186,7 @@ def inventory_vms(
 
 
 @inventory_app.command("hosts")
+@_cli_errors
 def inventory_hosts(target: TargetOption = None, config: ConfigOption = None) -> None:
     """List all ESXi hosts."""
     from vmware_monitor.ops.inventory import list_hosts
@@ -160,6 +213,7 @@ def inventory_hosts(target: TargetOption = None, config: ConfigOption = None) ->
 
 
 @inventory_app.command("datastores")
+@_cli_errors
 def inventory_datastores(target: TargetOption = None, config: ConfigOption = None) -> None:
     """List all datastores."""
     from vmware_monitor.ops.inventory import list_datastores
@@ -187,6 +241,7 @@ def inventory_datastores(target: TargetOption = None, config: ConfigOption = Non
 
 
 @inventory_app.command("clusters")
+@_cli_errors
 def inventory_clusters(target: TargetOption = None, config: ConfigOption = None) -> None:
     """List all clusters."""
     from vmware_monitor.ops.inventory import list_clusters
@@ -213,6 +268,7 @@ def inventory_clusters(target: TargetOption = None, config: ConfigOption = None)
 
 
 @health_app.command("alarms")
+@_cli_errors
 def health_alarms(target: TargetOption = None, config: ConfigOption = None) -> None:
     """Show active alarms."""
     from vmware_monitor.ops.health import get_active_alarms
@@ -240,6 +296,7 @@ def health_alarms(target: TargetOption = None, config: ConfigOption = None) -> N
 
 
 @health_app.command("events")
+@_cli_errors
 def health_events(
     hours: Annotated[int, typer.Option(help="Lookback hours")] = 24,
     severity: Annotated[str, typer.Option(help="Min severity: info/warning/error")] = "warning",
@@ -268,6 +325,7 @@ def health_events(
 
 
 @vm_app.command("info")
+@_cli_errors
 def vm_info(
     name: str,
     target: TargetOption = None,
@@ -284,6 +342,7 @@ def vm_info(
 
 
 @vm_app.command("snapshot-list")
+@_cli_errors
 def vm_snapshot_list(
     vm_name: str,
     target: TargetOption = None,
@@ -307,6 +366,7 @@ def vm_snapshot_list(
 
 
 @scan_app.command("now")
+@_cli_errors
 def scan_now(target: TargetOption = None, config: ConfigOption = None) -> None:
     """Run a one-time scan of alarms and events."""
     from vmware_monitor.scanner.alarm_scanner import scan_alarms
@@ -331,6 +391,7 @@ def scan_now(target: TargetOption = None, config: ConfigOption = None) -> None:
 
 
 @daemon_app.command("start")
+@_cli_errors
 def daemon_start(config: ConfigOption = None) -> None:
     """Start the scanner daemon."""
     from vmware_monitor.scanner.scheduler import start_scheduler
@@ -342,12 +403,28 @@ def daemon_start(config: ConfigOption = None) -> None:
 @daemon_app.command("status")
 def daemon_status() -> None:
     """Check scanner daemon status."""
+    import os as _os
+
     pid_file = CONFIG_DIR / "daemon.pid"
-    if pid_file.exists():
-        pid = pid_file.read_text().strip()
-        console.print(f"[green]Daemon running (PID: {pid})[/]")
-    else:
+    if not pid_file.exists():
         console.print("[yellow]Daemon not running.[/]")
+        return
+    raw = pid_file.read_text().strip()
+    try:
+        pid = int(raw)
+    except ValueError:
+        console.print(
+            f"[yellow]Corrupt PID file ({raw!r}). Run 'vmware-monitor daemon stop' to clean up.[/]"
+        )
+        return
+    try:
+        _os.kill(pid, 0)  # Signal 0 = liveness probe only; sends nothing
+        console.print(f"[green]Daemon running (PID: {pid})[/]")
+    except ProcessLookupError:
+        console.print(f"[yellow]Daemon not running (stale PID file, PID: {pid}).[/]")
+    except PermissionError:
+        # Process exists but is owned by another user
+        console.print(f"[green]Daemon running (PID: {pid})[/]")
 
 
 @daemon_app.command("stop")
@@ -360,7 +437,13 @@ def daemon_stop() -> None:
         console.print("[yellow]Daemon not running.[/]")
         return
 
-    pid = int(pid_file.read_text().strip())
+    raw = pid_file.read_text().strip()
+    try:
+        pid = int(raw)
+    except ValueError:
+        console.print(f"[yellow]Corrupt PID file ({raw!r}). Cleaning up.[/]")
+        pid_file.unlink(missing_ok=True)
+        return
     try:
         _os.kill(pid, signal.SIGTERM)
         console.print(f"[green]Daemon (PID: {pid}) stopped.[/]")

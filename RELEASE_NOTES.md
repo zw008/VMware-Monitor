@@ -1,3 +1,17 @@
+## v1.5.36 (2026-06-12) — MCP error-shape fix, resilient daemon, no false "all clear"
+
+### Fixed
+- **Five MCP tools lost their teaching hint to structured-output validation** — list-returning tools
+  returned an error dict, which FastMCP rejected as a ToolError; error shapes now match annotations so
+  the hint survives.
+- **`get_recent_events` no longer reports "no events" on a real failure** — only the standalone-ESXi
+  `NotSupported` case maps to empty; auth/network errors are raised.
+- **Daemon PID/scan ordering fixed** — a crash in the first scan no longer leaves a stale PID file
+  that makes `daemon status` lie; one bad log write no longer discards a scan cycle.
+- **Audit-write failure degrades to a stderr warning** instead of killing read commands.
+- `doctor` no longer recommends a nonexistent `init` command; CLI commands print teaching errors
+  instead of tracebacks; atexit Disconnect guarded.
+
 ## v1.5.35 (2026-06-10) — security hardening: safe errors, webhook & PID hygiene
 
 ### Fixed
