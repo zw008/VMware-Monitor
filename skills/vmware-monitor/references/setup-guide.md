@@ -38,7 +38,8 @@ vmware-monitor --version
 
 # 3. Configure
 mkdir -p ~/.vmware-monitor
-vmware-monitor init  # generates config.yaml and .env templates
+cp config.example.yaml ~/.vmware-monitor/config.yaml
+cp .env.example ~/.vmware-monitor/.env
 chmod 600 ~/.vmware-monitor/.env
 # Edit ~/.vmware-monitor/config.yaml and .env with your target details
 ```
@@ -127,7 +128,7 @@ MCP exposes 8 read-only tools: `list_virtual_machines`, `list_esxi_hosts`, `list
 
 ### MCP Server — Local Agent Compatibility
 
-The MCP server works with any MCP-compatible agent via stdio transport. All 8 tools are **read-only**. Config templates in `examples/mcp-configs/`:
+The MCP server works with any MCP-compatible agent via stdio transport. All 11 tools are **read-only**. Config templates in `examples/mcp-configs/`:
 
 | Agent | Local Models | Config Template |
 |-------|:----------:|-----------------|

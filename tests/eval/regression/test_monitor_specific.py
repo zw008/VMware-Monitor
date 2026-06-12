@@ -73,4 +73,4 @@ def test_mcp_exposes_snapshot_listing() -> None:
 
     tools = {t.name for t in asyncio.run(mcp.list_tools())}
     assert "vm_list_snapshots" in tools
-    assert len(tools) == 8, f"expected 8 MCP tools, got {len(tools)}: {sorted(tools)}"
+    assert len(tools) == 11, f"expected 11 MCP tools, got {len(tools)}: {sorted(tools)}"

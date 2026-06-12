@@ -21,7 +21,7 @@ compatibility: >
 
 > **Disclaimer**: This is a community-maintained open-source project and is **not affiliated with, endorsed by, or sponsored by VMware, Inc. or Broadcom Inc.** "VMware" and "vSphere" are trademarks of Broadcom. Source code is publicly auditable at [github.com/zw008/VMware-Monitor](https://github.com/zw008/VMware-Monitor) under the MIT license.
 
-Read-only VMware vCenter/ESXi monitoring — 8 MCP tools, zero destructive code.
+Read-only VMware vCenter/ESXi monitoring — 11 MCP tools, zero destructive code.
 
 > **Code-level safety**: This skill contains NO power, create, delete, snapshot, or modify operations. Not disabled — they don't exist in the codebase.
 > **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity), [vmware-avi](https://github.com/zw008/VMware-AVI) (AVI/ALB/AKO), [vmware-harden](https://github.com/zw008/VMware-Harden) (compliance baselines).
@@ -31,8 +31,8 @@ Read-only VMware vCenter/ESXi monitoring — 8 MCP tools, zero destructive code.
 
 | Category | Capabilities |
 |----------|-------------|
-| **Inventory** | List VMs, ESXi hosts, datastores, clusters |
-| **Health** | Active alarms, recent events (filter by severity/time) |
+| **Inventory** | List VMs, ESXi hosts, datastores, clusters, networks |
+| **Health** | Active alarms, recent events (filter by severity/time), hardware sensors, host services |
 | **VM Details** | CPU, memory, disks, NICs, snapshots, guest OS, IP |
 | **Scanning** | Scheduled alarm/log scanning with Slack/Discord webhooks |
 
@@ -123,7 +123,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | Cloud models (Claude, GPT-4o) | Either | MCP gives structured JSON I/O |
 | Automated pipelines | **MCP** | Type-safe parameters, structured output |
 
-## MCP Tools (8 — all read-only)
+## MCP Tools (11 — all read-only)
 
 | Tool | Description |
 |------|------------|
@@ -131,8 +131,11 @@ AI agents (especially smaller local models) can read these hints directly to det
 | `list_esxi_hosts` | ESXi hosts with CPU, memory, version, uptime |
 | `list_all_datastores` | Datastores with capacity, free space, type |
 | `list_all_clusters` | Clusters with host count, DRS/HA status |
+| `list_all_networks` | Networks with attached VM count and accessibility |
 | `get_alarms` | All active/triggered alarms — includes `suggested_actions` remediation hints |
 | `get_events` | Recent events filtered by severity and time — includes `suggested_actions` hints |
+| `get_host_sensors` | Hardware sensor status (temperature/voltage/fan) per host with green/yellow/red health |
+| `get_host_services` | Host service status (running state and startup policy), optionally filtered by host |
 | `vm_info` | Detailed VM info (CPU, memory, disks, NICs, snapshots) |
 | `vm_list_snapshots` | Snapshot list for one VM with nesting hierarchy (read-only) |
 
@@ -145,8 +148,11 @@ vmware-monitor inventory vms [--target <t>] [--limit 20] [--power-state poweredO
 vmware-monitor inventory hosts [--target <t>]
 vmware-monitor inventory datastores [--target <t>]
 vmware-monitor inventory clusters [--target <t>]
+vmware-monitor inventory networks [--target <t>]
 vmware-monitor health alarms [--target <t>]
 vmware-monitor health events [--hours 24] [--severity warning]
+vmware-monitor health sensors [--target <t>]
+vmware-monitor health services [--host <esxi>] [--target <t>]
 vmware-monitor vm info <vm-name> [--target <t>]
 vmware-monitor scan now [--target <t>]
 vmware-monitor daemon start|stop|status
@@ -179,8 +185,10 @@ vCenter may be under heavy load. Try targeting a specific ESXi host directly ins
 ```bash
 uv tool install vmware-monitor
 mkdir -p ~/.vmware-monitor
-vmware-monitor init
-chmod 600 ~/.vmware-monitor/.env  # if using webhooks
+cp config.example.yaml ~/.vmware-monitor/config.yaml
+cp .env.example ~/.vmware-monitor/.env
+chmod 600 ~/.vmware-monitor/.env
+# Edit ~/.vmware-monitor/config.yaml (targets) and .env (passwords)
 ```
 
 > All tools are automatically audited via vmware-policy. Audit logs: `vmware-audit log --last 20`

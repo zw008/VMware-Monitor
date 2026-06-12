@@ -35,8 +35,11 @@ ALL_TOOLS: list[tuple[str, dict]] = [
     ("list_esxi_hosts", {}),
     ("list_all_datastores", {}),
     ("list_all_clusters", {}),
+    ("list_all_networks", {}),
     ("get_alarms", {}),
     ("get_events", {}),
+    ("get_host_sensors", {}),
+    ("get_host_services", {}),
     ("vm_info", {"vm_name": "ghost-vm"}),
     ("vm_list_snapshots", {"vm_name": "ghost-vm"}),
 ]

@@ -26,6 +26,7 @@ vmware-monitor inventory vms [--target <name>] [--limit <n>] [--sort-by name|cpu
 vmware-monitor inventory hosts [--target <name>]
 vmware-monitor inventory datastores [--target <name>]
 vmware-monitor inventory clusters [--target <name>]
+vmware-monitor inventory networks [--target <name>]
 ```
 
 - `--target`: Named target from `config.yaml` (default: first target)
@@ -41,10 +42,13 @@ vmware-monitor inventory clusters [--target <name>]
 ```bash
 vmware-monitor health alarms [--target <name>]
 vmware-monitor health events [--hours 24] [--severity warning] [--target <name>]
+vmware-monitor health sensors [--target <name>]
+vmware-monitor health services [--host <esxi-name>] [--target <name>]
 ```
 
 - `--hours`: Time range for event query (default: 24)
 - `--severity`: Minimum severity filter — `info`, `warning`, `error`, `critical` (default: `warning`)
+- `--host` (services only): Filter service status to a single host by exact name (default: all hosts)
 
 ## VM Info (Read-Only)
 
@@ -71,13 +75,16 @@ vmware-monitor daemon status
 - `daemon stop`: Stop the background scanner
 - `daemon status`: Check if the daemon is running
 
-## Init
+## Setup
 
 ```bash
-vmware-monitor init
+mkdir -p ~/.vmware-monitor
+cp config.example.yaml ~/.vmware-monitor/config.yaml
+cp .env.example ~/.vmware-monitor/.env
+chmod 600 ~/.vmware-monitor/.env
 ```
 
-Generates `config.yaml` and `.env` templates in `~/.vmware-monitor/`.
+Copies the `config.yaml` and `.env` templates into `~/.vmware-monitor/`; then edit them with your target details.
 
 ## Architecture
 

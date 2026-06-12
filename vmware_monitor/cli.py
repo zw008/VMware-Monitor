@@ -264,6 +264,28 @@ def inventory_clusters(target: TargetOption = None, config: ConfigOption = None)
     console.print(table)
 
 
+@inventory_app.command("networks")
+@_cli_errors
+def inventory_networks(target: TargetOption = None, config: ConfigOption = None) -> None:
+    """List all networks."""
+    from vmware_monitor.ops.inventory import list_networks
+
+    si, _, tgt = _get_connection(target, config)
+    networks = list_networks(si)
+    _audit.log_query(target=tgt, resource="networks", query_type="list_networks")
+    table = Table(title="Networks")
+    table.add_column("Name", style="cyan")
+    table.add_column("VMs", justify="right")
+    table.add_column("Accessible")
+    for n in networks:
+        table.add_row(
+            n["name"],
+            str(n["vm_count"]),
+            "[green]yes[/]" if n["accessible"] else "[red]no[/]",
+        )
+    console.print(table)
+
+
 # ─── Health ───────────────────────────────────────────────────────────────────
 
 
@@ -318,6 +340,75 @@ def health_events(
     table.add_column("Message")
     for e in events:
         table.add_row(e["time"], e["event_type"], e["message"][:120])
+    console.print(table)
+
+
+@health_app.command("sensors")
+@_cli_errors
+def health_sensors(target: TargetOption = None, config: ConfigOption = None) -> None:
+    """Show hardware sensor status for all hosts."""
+    from vmware_monitor.ops.health import get_host_hardware_status
+
+    si, _, tgt = _get_connection(target, config)
+    sensors = get_host_hardware_status(si)
+    _audit.log_query(target=tgt, resource="hardware_sensors", query_type="get_host_hardware_status")
+    if not sensors:
+        console.print("[green]No hardware sensor data available.[/]")
+        return
+    table = Table(title="Hardware Sensors")
+    table.add_column("Host", style="cyan")
+    table.add_column("Sensor")
+    table.add_column("Type")
+    table.add_column("Reading", justify="right")
+    table.add_column("Status")
+    for s in sensors:
+        status_style = {"green": "green", "yellow": "yellow", "red": "red"}.get(
+            s["status"], "white"
+        )
+        table.add_row(
+            s["host"],
+            s["sensor_name"],
+            s["type"],
+            f"{s['reading']} {s['unit']}",
+            f"[{status_style}]{s['status']}[/]",
+        )
+    console.print(table)
+
+
+@health_app.command("services")
+@_cli_errors
+def health_services(
+    host: Annotated[
+        str | None,
+        typer.Option("--host", help="Filter to a single host by exact name"),
+    ] = None,
+    target: TargetOption = None,
+    config: ConfigOption = None,
+) -> None:
+    """Show host service status (running/policy)."""
+    from vmware_monitor.ops.health import get_host_services
+
+    si, _, tgt = _get_connection(target, config)
+    services = get_host_services(si, host_name=host)
+    _audit.log_query(target=tgt, resource="host_services", query_type="get_host_services")
+    if not services:
+        console.print("[yellow]No host services found.[/]")
+        return
+    table = Table(title="Host Services")
+    table.add_column("Host", style="cyan")
+    table.add_column("Service")
+    table.add_column("Label")
+    table.add_column("Running")
+    table.add_column("Policy")
+    for s in services:
+        run_style = "green" if s["running"] else "red"
+        table.add_row(
+            s["host"],
+            s["service"],
+            s["label"],
+            f"[{run_style}]{'yes' if s['running'] else 'no'}[/]",
+            s["policy"],
+        )
     console.print(table)
 
 

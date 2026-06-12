@@ -35,11 +35,17 @@ from vmware_policy import sanitize, vmware_tool
 # Internal VMware monitoring modules (all read-only operations)
 from vmware_monitor.config import load_config
 from vmware_monitor.connection import ConnectionManager
-from vmware_monitor.ops.health import get_active_alarms, get_recent_events
+from vmware_monitor.ops.health import (
+    get_active_alarms,
+    get_host_hardware_status,
+    get_recent_events,
+)
+from vmware_monitor.ops.health import get_host_services as _ops_get_host_services
 from vmware_monitor.ops.inventory import (
     list_clusters,
     list_datastores,
     list_hosts,
+    list_networks,
     list_vms,
 )
 from vmware_monitor.ops.vm_info import get_vm_info, list_snapshots
@@ -222,6 +228,26 @@ def list_all_clusters(
     return results
 
 
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def list_all_networks(
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[dict]:
+    """[READ] List networks with name, attached VM count, and accessibility.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of networks to return (None = all).
+    """
+    si = _get_connection(target)
+    results = list_networks(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Health tools (read-only)
 # ---------------------------------------------------------------------------
@@ -267,6 +293,52 @@ def get_events(
     """
     si = _get_connection(target)
     return get_recent_events(si, hours=hours, severity=severity)
+
+
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def get_host_sensors(
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[dict]:
+    """[READ] Get hardware sensor status (temperature, voltage, fan, ...) for all hosts.
+
+    Each entry includes host, sensor_name, type, reading, unit, and status
+    (green/yellow/red from healthState.key). Use to spot failing hardware
+    before it causes an outage. Returns an empty list when no host exposes
+    sensor data (e.g. nested ESXi).
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of sensor rows to return (None = all).
+    """
+    si = _get_connection(target)
+    results = get_host_hardware_status(si)
+    if limit is not None:
+        results = results[:limit]
+    return results
+
+
+@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def get_host_services(
+    host_name: Optional[str] = None,
+    target: Optional[str] = None,
+) -> list[dict]:
+    """[READ] Get host service status (running state and startup policy).
+
+    Each entry includes host, service key, label, running (bool), and policy
+    (on/off/automatic). Use to check whether SSH, NTP, or the firewall service
+    is in the expected state.
+
+    Args:
+        host_name: Filter to a single host by exact name (None = all hosts).
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return _ops_get_host_services(si, host_name=host_name)
 
 
 # ---------------------------------------------------------------------------

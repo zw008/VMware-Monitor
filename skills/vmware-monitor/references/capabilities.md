@@ -26,7 +26,7 @@ Each operation is classified by autonomy level per the Enterprise Harness Engine
 | List Hosts | Y | Self only | CPU cores, memory, ESXi version, VM count, uptime |
 | List Datastores | Y | Y | Capacity, free/used, type (VMFS/NFS), usage % |
 | List Clusters | Y | N | Host count, DRS/HA status |
-| List Networks | Y | Y | Network name, associated VM count |
+| List Networks | Y | Y | Network name, associated VM count, accessibility — CLI `inventory networks`, MCP `list_all_networks` |
 
 ### `list_vms` — input parameters
 
@@ -62,8 +62,8 @@ Each VM dict in the `vms` array contains:
 |---------|:-------:|:----:|---------|
 | Active Alarms | Y | Y | Severity, alarm name, entity, timestamp |
 | Event/Log Query | Y | Y | Filter by time range, severity; 50+ event types |
-| Hardware Sensors | Y | Y | Per-sensor `type` (temperature/voltage/fan...), reading, unit, and health `status` (green/yellow/red) |
-| Host Services | Y | Y | hostd, vpxa running/stopped status |
+| Hardware Sensors | Y | Y | Per-sensor `type` (temperature/voltage/fan...), reading, unit, and health `status` (green/yellow/red) — CLI `health sensors`, MCP `get_host_sensors` |
+| Host Services | Y | Y | hostd, vpxa running/stopped status — CLI `health services`, MCP `get_host_services` |
 
 ### Monitored Event Types
 

@@ -1,3 +1,13 @@
+## v1.5.37 (2026-06-12) — backlog: wire up advertised health tools
+
+### Added
+- `health sensors`, `health services`, and `inventory networks` CLI commands + read-only MCP tools — these
+  were implemented but unreachable while the help text advertised them. Tool count 8 → 11 (all read-only). (#16)
+
+### Fixed
+- Docs no longer reference a nonexistent `vmware-monitor init`; setup instructions corrected. (#17)
+- Removed two orphan lookup helpers with no callers.
+
 ## v1.5.36 (2026-06-12) — MCP error-shape fix, resilient daemon, no false "all clear"
 
 ### Fixed

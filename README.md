@@ -7,7 +7,7 @@
 
 English | [中文](README-CN.md)
 
-**Read-only** VMware vCenter/ESXi monitoring — 8 tools, code-level safety. No destructive operations exist in this codebase.
+**Read-only** VMware vCenter/ESXi monitoring — 11 tools, code-level safety. No destructive operations exist in this codebase.
 
 > **Why a separate repository?** VMware Monitor is fully independent from [VMware-AIops](https://github.com/zw008/VMware-AIops). Safety is enforced at the **code level**: no power off, delete, create, reconfigure, snapshot-create/revert/delete, clone, or migrate functions exist in this codebase. Not just prompt constraints — zero destructive code paths.
 
@@ -110,7 +110,7 @@ ESXi Standalone ──→ VMs
 | List Hosts | ✅ | ⚠️ Self only | CPU cores, memory, ESXi version, VM count, uptime |
 | List Datastores | ✅ | ✅ | Capacity, free/used, type (VMFS/NFS), usage % |
 | List Clusters | ✅ | ❌ | Host count, DRS/HA status |
-| List Networks | ✅ | ✅ | Network name, associated VM count |
+| List Networks | ✅ | ✅ | Network name, associated VM count, accessibility — CLI `inventory networks`, MCP `list_all_networks` |
 
 ### 2. Health & Monitoring
 
@@ -118,8 +118,8 @@ ESXi Standalone ──→ VMs
 |---------|:-------:|:----:|---------|
 | Active Alarms | ✅ | ✅ | Severity, alarm name, entity, timestamp |
 | Event/Log Query | ✅ | ✅ | Filter by time range, severity; 50+ event types |
-| Hardware Sensors | ✅ | ✅ | Per-sensor `type` (temperature/voltage/fan...), reading, unit, and health `status` (green/yellow/red) |
-| Host Services | ✅ | ✅ | hostd, vpxa running/stopped status |
+| Hardware Sensors | ✅ | ✅ | Per-sensor `type` (temperature/voltage/fan...), reading, unit, and health `status` (green/yellow/red) — CLI `health sensors`, MCP `get_host_sensors` |
+| Host Services | ✅ | ✅ | hostd, vpxa running/stopped status — CLI `health services`, MCP `get_host_services` |
 
 **Monitored Event Types:**
 
@@ -250,7 +250,7 @@ vCenter may be under heavy load. Try targeting a specific ESXi host directly ins
 
 ### MCP Server Integrations
 
-The vmware-monitor MCP server works with **any MCP-compatible agent or tool**. Ready-to-use configuration templates are in [`examples/mcp-configs/`](examples/mcp-configs/). All 8 tools are **read-only** — code-level enforced safety.
+The vmware-monitor MCP server works with **any MCP-compatible agent or tool**. Ready-to-use configuration templates are in [`examples/mcp-configs/`](examples/mcp-configs/). All 11 tools are **read-only** — code-level enforced safety.
 
 | Agent / Tool | Local Model Support | Config Template | Integration Guide |
 |-------------|:-------------------:|-----------------|-------------------|

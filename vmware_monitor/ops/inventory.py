@@ -243,23 +243,3 @@ def find_vm_by_name(si: ServiceInstance, vm_name: str) -> vim.VirtualMachine | N
         if vm.name == vm_name:
             return vm
     return None
-
-
-def find_host_by_name(si: ServiceInstance, host_name: str) -> vim.HostSystem | None:
-    """Find a host by name. Returns None if not found."""
-    hosts = _get_objects(si, [vim.HostSystem])
-    for host in hosts:
-        if host.name == host_name:
-            return host
-    return None
-
-
-def find_datastore_by_name(
-    si: ServiceInstance, ds_name: str
-) -> vim.Datastore | None:
-    """Find a datastore by name. Returns None if not found."""
-    datastores = _get_objects(si, [vim.Datastore])
-    for ds in datastores:
-        if ds.name == ds_name:
-            return ds
-    return None
