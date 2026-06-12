@@ -1,3 +1,7 @@
+## v1.5.38 (2026-06-12) — release alignment
+
+No functional changes — version bumped to keep the VMware skill family aligned at v1.5.38.
+
 ## v1.5.37 (2026-06-12) — backlog: wire up advertised health tools
 
 ### Added
