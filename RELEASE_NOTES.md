@@ -1,3 +1,9 @@
+## v1.6.0 (2026-06-22) — family alignment + harness trust architecture
+
+No skill code changes. Aligns to the v1.6.0 family release and automatically picks up the
+vmware-policy 1.6.0 governance upgrades (token/runaway budget guard, audit accountability fields,
+graduated-autonomy risk tiers) on next install. Read-only skill — no undo tokens applicable.
+
 ## v1.5.39 (2026-06-22) — family version alignment
 
 No code changes. Version bump to stay aligned with the v1.5.39 family release
