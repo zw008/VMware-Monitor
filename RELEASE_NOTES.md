@@ -1,4 +1,4 @@
-## Unreleased
+## v1.6.1 (2026-06-24)
 
 ### Added
 - **`.env` passwords are auto-obfuscated to a grep-safe `b64:` form** on first
