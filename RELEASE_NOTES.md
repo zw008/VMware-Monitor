@@ -1,3 +1,16 @@
+## Unreleased
+
+### Added
+- **`.env` passwords are auto-obfuscated to a grep-safe `b64:` form** on first
+  load and decoded transparently at runtime — plaintext no longer sits in
+  `~/.<skill>/.env` for a casual `grep` to find. Values are read/written through
+  python-dotenv's own parser, so the stored secret never drifts from the
+  configured one (handles quotes, inline comments, trailing whitespace, and a
+  password that literally starts with `b64:`). **Obfuscation, not encryption** —
+  for real at-rest secrecy, inject the password from a secret manager instead of
+  storing `.env`. New regression suite (10 cases) covers dotenv parity, the
+  `b64:`-prefixed edge case, idempotency, and 0600 preservation.
+
 ## v1.6.0 (2026-06-22) — family alignment + harness trust architecture
 
 No skill code changes. Aligns to the v1.6.0 family release and automatically picks up the

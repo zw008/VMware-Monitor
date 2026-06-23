@@ -97,6 +97,21 @@ MCP exposes 8 read-only tools: `list_virtual_machines`, `list_esxi_hosts`, `list
 
 `list_virtual_machines` supports `limit`, `sort_by`, `power_state`, `fields` for compact context in large inventories.
 
+### Password obfuscation at rest
+
+On first load, any plaintext `*_PASSWORD` value in `.env` is automatically
+rewritten to a grep-safe `b64:<encoded>` form and decoded transparently at
+runtime, so a casual `grep` of the file no longer reveals the password. Values
+are read and written through python-dotenv's own parser, so the stored secret
+never drifts from what you configured (quotes, inline comments, and trailing
+whitespace are handled correctly).
+
+> **This is obfuscation, not encryption.** Anyone who can read the file can
+> still decode it. For real secrecy at rest, do not store the password in `.env`
+> at all — inject it from a secret manager (HashiCorp Vault, CyberArk, AWS
+> Secrets Manager, or a Kubernetes Secret) into the `*_PASSWORD` environment
+> variable at process start. The code reads the env var either way.
+
 ## Security
 
 > **Disclaimer**: This is a community-maintained open-source project and is **not affiliated with, endorsed by, or sponsored by VMware, Inc. or Broadcom Inc.** "VMware" and "vSphere" are trademarks of Broadcom.
