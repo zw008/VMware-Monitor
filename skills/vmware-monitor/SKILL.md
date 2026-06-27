@@ -21,7 +21,7 @@ compatibility: >
 
 > **Disclaimer**: This is a community-maintained open-source project and is **not affiliated with, endorsed by, or sponsored by VMware, Inc. or Broadcom Inc.** "VMware" and "vSphere" are trademarks of Broadcom. Source code is publicly auditable at [github.com/zw008/VMware-Monitor](https://github.com/zw008/VMware-Monitor) under the MIT license.
 
-Read-only VMware vCenter/ESXi monitoring — 11 MCP tools, zero destructive code.
+Read-only VMware vCenter/ESXi monitoring — 21 MCP tools, zero destructive code.
 
 > **Code-level safety**: This skill contains NO power, create, delete, snapshot, or modify operations. Not disabled — they don't exist in the codebase.
 > **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity), [vmware-avi](https://github.com/zw008/VMware-AVI) (AVI/ALB/AKO), [vmware-harden](https://github.com/zw008/VMware-Harden) (compliance baselines).
@@ -29,10 +29,17 @@ Read-only VMware vCenter/ESXi monitoring — 11 MCP tools, zero destructive code
 
 ## What This Skill Does
 
+All 21 tools are **read-only**.
+
 | Category | Capabilities |
 |----------|-------------|
 | **Inventory** | List VMs, ESXi hosts, datastores, clusters, networks |
 | **Health** | Active alarms, recent events (filter by severity/time), hardware sensors, host services |
+| **Performance** | Real-time host & VM CPU/memory/disk/network utilisation (PerfManager) |
+| **Capacity** | Datastore thin-provisioning over-commit, resource-pool reservation/usage |
+| **Infra Health** | ESXi certificate expiry, license usage/expiry, NTP configuration health |
+| **Snapshots** | Inventory-wide snapshot aging & sprawl (flag old snapshots) |
+| **Activity** | In-flight tasks, active login sessions |
 | **VM Details** | CPU, memory, disks, NICs, snapshots, guest OS, IP |
 | **Scanning** | Scheduled alarm/log scanning with Slack/Discord webhooks |
 
@@ -110,6 +117,19 @@ AI agents (especially smaller local models) can read these hints directly to det
 3. Check related events --> `vmware-monitor health events --hours 48`
 4. **If VM not found** --> verify VM name with `vmware-monitor inventory vms --limit 100` or check target with `--target <other-vcenter>`
 
+### Performance Triage ("the cluster feels slow")
+**Judgment**: inventory shows *configured* capacity (cores, GB); it cannot tell you what is actually hot. Use the real-time perf tools, then narrow.
+1. Rank hosts --> `vmware-monitor perf hosts` — the busiest host floats to the top (sorted by CPU%)
+2. Rank VMs on the suspect --> `vmware-monitor perf vms --limit 25` — find the noisy neighbour
+3. Check for hidden storage pressure --> `vmware-monitor capacity datastores` — over-commit % > 100 means a thin datastore can fill mid-run even with "free" space showing
+4. Rule out snapshot drag --> `vmware-monitor snapshots aging --only-old` — old snapshots silently degrade I/O
+5. **If perf tools return empty** --> the host/VM may be disconnected or powered off (no real-time provider); confirm with `inventory hosts` / `inventory vms`
+
+### Scheduled-Outage Pre-flight (certs, licenses, time)
+1. Cert expiry --> `vmware-monitor infra certs --warn-days 60` — an expired ESXi cert drops host management
+2. License headroom --> `vmware-monitor infra licenses` — catch over-allocation before it disables features
+3. Time sync --> `vmware-monitor infra ntp` — `healthy: no` breaks SSO/Kerberos/log correlation (note: live offset is not exposed by the SOAP API, only config health)
+
 ### Set Up Continuous Monitoring
 1. Configure webhook in `~/.vmware-monitor/config.yaml`
 2. Start daemon --> `vmware-monitor daemon start`
@@ -123,7 +143,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | Cloud models (Claude, GPT-4o) | Either | MCP gives structured JSON I/O |
 | Automated pipelines | **MCP** | Type-safe parameters, structured output |
 
-## MCP Tools (11 — all read-only)
+## MCP Tools (21 — all read-only)
 
 | Tool | Description |
 |------|------------|
@@ -138,8 +158,20 @@ AI agents (especially smaller local models) can read these hints directly to det
 | `get_host_services` | Host service status (running state and startup policy), optionally filtered by host |
 | `vm_info` | Detailed VM info (CPU, memory, disks, NICs, snapshots) |
 | `vm_list_snapshots` | Snapshot list for one VM with nesting hierarchy (read-only) |
+| `host_performance` | **Real-time** host CPU/mem/disk/net utilisation (PerfManager); busiest first |
+| `vm_performance` | **Real-time** VM CPU/mem/disk/net utilisation (top 25 by default); powered-on only |
+| `snapshot_aging` | Inventory-wide snapshot sweep with age + sprawl; flags snapshots older than N days |
+| `certificate_status` | Per-host ESXi management certificate expiry (days until expiry, expiring flag) |
+| `license_status` | vCenter/ESXi license inventory with used/total and expiration |
+| `ntp_status` | Per-host NTP config health (servers + ntpd state); live offset not in SOAP API |
+| `datastore_capacity` | Datastore over-commit (provisioned vs capacity); thin-provisioning risk |
+| `resource_pool_usage` | Resource-pool CPU/memory reservation, limit, and current usage |
+| `active_tasks` | In-flight (and recently completed) vCenter tasks with progress/errors |
+| `active_sessions` | Currently authenticated vCenter/ESXi sessions (who is logged in) |
 
 All tools are **read-only**. No tool can modify, create, or delete any resource.
+Performance/capacity readings are point-in-time samples — this skill retains no
+history, so it never reports a fabricated "trend" or runway date.
 
 ## CLI Quick Reference
 
@@ -153,6 +185,16 @@ vmware-monitor health alarms [--target <t>]
 vmware-monitor health events [--hours 24] [--severity warning]
 vmware-monitor health sensors [--target <t>]
 vmware-monitor health services [--host <esxi>] [--target <t>]
+vmware-monitor perf hosts [--host <esxi>] [--target <t>]
+vmware-monitor perf vms [--vm <name>] [--limit 25] [--target <t>]
+vmware-monitor capacity datastores [--target <t>]
+vmware-monitor capacity pools [--target <t>]
+vmware-monitor infra certs [--warn-days 30] [--target <t>]
+vmware-monitor infra licenses [--target <t>]
+vmware-monitor infra ntp [--host <esxi>] [--target <t>]
+vmware-monitor snapshots aging [--threshold 30] [--only-old] [--target <t>]
+vmware-monitor activity tasks [--active-only] [--target <t>]
+vmware-monitor activity sessions [--target <t>]
 vmware-monitor vm info <vm-name> [--target <t>]
 vmware-monitor scan now [--target <t>]
 vmware-monitor daemon start|stop|status
@@ -184,11 +226,17 @@ vCenter may be under heavy load. Try targeting a specific ESXi host directly ins
 
 ```bash
 uv tool install vmware-monitor
+vmware-monitor init      # guided: prompts for host/user/password, writes config + .env (chmod 600), then verifies
+```
+
+`init` stores the password grep-safe (obfuscated `b64:`, never plaintext) and
+locks `.env` to 0600. Prefer it over hand-editing. Manual alternative:
+
+```bash
 mkdir -p ~/.vmware-monitor
 cp config.example.yaml ~/.vmware-monitor/config.yaml
-cp .env.example ~/.vmware-monitor/.env
-chmod 600 ~/.vmware-monitor/.env
-# Edit ~/.vmware-monitor/config.yaml (targets) and .env (passwords)
+cp .env.example ~/.vmware-monitor/.env && chmod 600 ~/.vmware-monitor/.env
+# Edit config.yaml (targets) and .env (passwords), then: vmware-monitor doctor
 ```
 
 > All tools are automatically audited via vmware-policy. Audit logs: `vmware-audit log --last 20`

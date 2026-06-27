@@ -1,3 +1,27 @@
+## v1.7.0 (2026-06-27) — guided onboarding + teaching auth errors
+
+### Added
+- **`vmware-monitor init` — interactive first-run setup wizard.** Prompts for host /
+  username / password and writes `config.yaml` + `.env` for you. The password is
+  stored grep-safe (`b64:`, never plaintext on disk) and `.env` is locked to
+  0600, then the connection is verified. Replaces the manual "mkdir + cp
+  config.example.yaml + edit YAML + chmod 600" dance.
+- **10 new read-only monitoring tools (MCP 11 → 21).** Real-time host/VM
+  performance (PerfManager: CPU/mem/disk/net), inventory-wide snapshot aging &
+  sprawl, ESXi certificate expiry, license usage/expiry, NTP config health,
+  datastore thin-provisioning over-commit, resource-pool usage, in-flight tasks,
+  and active sessions — all strictly read-only. Honest about limits: no
+  fabricated trends, and NTP live-offset is documented as not exposed by the
+  SOAP API.
+
+### Changed
+- `doctor` now points to `vmware-monitor init` when config/credentials are missing
+  (previously suggested a command that did not exist), keeping the manual steps
+  as a fallback.
+- Authentication and TLS failures now print a teaching message naming the exact
+  file and env var to fix (`~/.vmware-monitor/.env` password var, `config.yaml`
+  username) plus a `verify_ssl: false` hint for self-signed labs.
+
 ## v1.6.1 (2026-06-24)
 
 ### Added

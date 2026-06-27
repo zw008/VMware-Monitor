@@ -73,4 +73,15 @@ def test_mcp_exposes_snapshot_listing() -> None:
 
     tools = {t.name for t in asyncio.run(mcp.list_tools())}
     assert "vm_list_snapshots" in tools
-    assert len(tools) == 11, f"expected 11 MCP tools, got {len(tools)}: {sorted(tools)}"
+    # Observability expansion (perf/snapshot-aging/infra/capacity/activity)
+    # took the surface from 11 → 21. Keep CLI↔MCP parity locked so a future
+    # accidental drop is caught (same guard rationale as 踩坑 #34).
+    expected_new = {
+        "host_performance", "vm_performance", "snapshot_aging",
+        "certificate_status", "license_status", "ntp_status",
+        "datastore_capacity", "resource_pool_usage",
+        "active_tasks", "active_sessions",
+    }
+    missing = expected_new - tools
+    assert not missing, f"observability tools missing from MCP: {sorted(missing)}"
+    assert len(tools) == 21, f"expected 21 MCP tools, got {len(tools)}: {sorted(tools)}"

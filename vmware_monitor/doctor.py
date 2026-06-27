@@ -35,16 +35,16 @@ def _check_config_file() -> tuple[bool, str]:
     if CONFIG_FILE.exists():
         return True, f"Config found: {CONFIG_FILE}"
     return False, (
-        f"Config not found: {CONFIG_FILE}  →  Run: mkdir -p {CONFIG_DIR} && "
-        f"cp config.example.yaml {CONFIG_FILE}, then edit your targets"
+        f"Config not found: {CONFIG_FILE}  →  Run: vmware-monitor init  "
+        f"(or manually: mkdir -p {CONFIG_DIR} && cp config.example.yaml {CONFIG_FILE})"
     )
 
 
 def _check_env_file() -> tuple[bool, str]:
     if not ENV_FILE.exists():
         return False, (
-            f".env not found: {ENV_FILE}  →  Run: mkdir -p {CONFIG_DIR} && "
-            f"cp .env.example {ENV_FILE} && chmod 600 {ENV_FILE}, then fill in passwords"
+            f".env not found: {ENV_FILE}  →  Run: vmware-monitor init  "
+            f"(or manually: cp .env.example {ENV_FILE} && chmod 600 {ENV_FILE})"
         )
     mode = ENV_FILE.stat().st_mode
     if mode & (stat.S_IRWXG | stat.S_IRWXO):

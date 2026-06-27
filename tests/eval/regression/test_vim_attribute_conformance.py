@@ -213,6 +213,53 @@ PROPERTY_CHAINS = [
     # OVF / HttpNfcLease
     ("HttpNfcLease", "info.deviceUrl"),
     ("HttpNfcLease", "state"),
+    # --- Observability expansion (perf/snapshots/infra/capacity/activity) ---
+    # Performance counters
+    ("ServiceContent", "perfManager"),
+    ("PerformanceManager", "perfCounter.key"),
+    ("PerformanceManager", "perfCounter.groupInfo.key"),
+    ("PerformanceManager", "perfCounter.nameInfo.key"),
+    ("PerformanceManager", "perfCounter.rollupType"),
+    # Snapshot aging / sprawl
+    ("VirtualMachine", "snapshot.rootSnapshotList.createTime"),
+    ("VirtualMachine", "snapshot.rootSnapshotList.description"),
+    ("VirtualMachine", "layoutEx.file.type"),
+    ("VirtualMachine", "layoutEx.file.size"),
+    # Infra health — certificates, licenses, NTP
+    ("HostSystem", "configManager.certificateManager.certificateInfo.notAfter"),
+    ("HostSystem", "config.dateTimeInfo.ntpConfig.server"),
+    ("ServiceContent", "licenseManager"),
+    ("LicenseManager", "licenses.name"),
+    ("LicenseManager", "licenses.editionKey"),
+    ("LicenseManager", "licenses.total"),
+    ("LicenseManager", "licenses.used"),
+    ("LicenseManager", "licenses.properties.key"),
+    ("LicenseManager", "licenses.properties.value"),
+    # Capacity — datastore over-commit + resource pools
+    ("Datastore", "summary.type"),
+    ("Datastore", "summary.uncommitted"),
+    ("ResourcePool", "name"),
+    ("ResourcePool", "config.cpuAllocation.reservation"),
+    ("ResourcePool", "config.cpuAllocation.limit"),
+    ("ResourcePool", "config.memoryAllocation.reservation"),
+    ("ResourcePool", "config.memoryAllocation.limit"),
+    ("ResourcePool", "summary.quickStats.overallCpuUsage"),
+    ("ResourcePool", "summary.quickStats.guestMemoryUsage"),
+    # Activity — tasks + sessions
+    ("ServiceContent", "sessionManager"),
+    ("TaskManager", "recentTask"),
+    ("TaskInfo", "startTime"),
+    ("TaskInfo", "key"),
+    ("TaskInfo", "reason"),
+    ("TaskInfo", "error.msg"),
+    ("TaskReasonUser", "userName"),
+    ("SessionManager", "currentSession.key"),
+    ("SessionManager", "sessionList.userName"),
+    ("SessionManager", "sessionList.fullName"),
+    ("SessionManager", "sessionList.loginTime"),
+    ("SessionManager", "sessionList.lastActiveTime"),
+    ("SessionManager", "sessionList.ipAddress"),
+    ("SessionManager", "sessionList.key"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -225,6 +272,8 @@ METHODS = [
     ("view.ViewManager", "CreateContainerView"),
     ("view.ContainerView", "Destroy"),
     ("event.EventManager", "QueryEvents"),
+    ("PerformanceManager", "QueryPerf"),
+    ("PerformanceManager", "QueryPerfProviderSummary"),
     # C1 regression: the Folder method is MoveIntoFolder_Task (param 'list');
     # plain MoveInto_Task exists only on ClusterComputeResource (param 'host').
     ("Folder", "MoveIntoFolder_Task"),

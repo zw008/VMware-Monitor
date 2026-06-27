@@ -103,10 +103,20 @@ def test_catch_tool_errors_uses_real_tool_name(caplog):
     assert not any("Tool monitor failed" in r.getMessage() for r in caplog.records)
 
 
-# ── Fix 2: doctor must not recommend nonexistent "vmware-monitor init" ───
+# ── Fix 2 (evolved): doctor may recommend `init` ONLY because it now exists ──
+# Original invariant: "init doesn't exist → never mention it" (false-promise
+# guard). Now an interactive `vmware-monitor init` wizard ships, so the guard
+# flips to a consistency check: any `init` recommendation MUST be backed by a
+# registered CLI command, and the manual fallback must remain.
 
 
-def test_doctor_never_recommends_init(monkeypatch, tmp_path):
+def _init_command_is_registered() -> bool:
+    from vmware_monitor.cli import app
+
+    return any(c.name == "init" for c in app.registered_commands)
+
+
+def test_doctor_recommends_init_which_actually_exists(monkeypatch, tmp_path):
     from vmware_monitor import doctor
 
     monkeypatch.setattr(doctor, "CONFIG_FILE", tmp_path / "missing" / "config.yaml")
@@ -115,16 +125,22 @@ def test_doctor_never_recommends_init(monkeypatch, tmp_path):
     ok_cfg, msg_cfg = doctor._check_config_file()
     ok_env, msg_env = doctor._check_env_file()
     assert not ok_cfg and not ok_env
+    # If (and only if) a message points at `vmware-monitor init`, the command
+    # must be real — no false promises (踩坑 #2).
     for msg in (msg_cfg, msg_env):
-        assert "vmware-monitor init" not in msg
-    # Real, executable setup instructions instead
+        if "vmware-monitor init" in msg:
+            assert _init_command_is_registered(), "doctor recommends init but it is not registered"
+    # Manual fallback stays available for non-interactive setups.
     assert "config.example.yaml" in msg_cfg
     assert "chmod 600" in msg_env
 
 
-def test_doctor_source_has_no_init_reference():
+def test_doctor_init_reference_is_backed_by_real_command():
     src = (REPO_ROOT / "vmware_monitor" / "doctor.py").read_text()
-    assert "vmware-monitor init" not in src
+    if "vmware-monitor init" in src:
+        assert _init_command_is_registered(), (
+            "doctor.py references `vmware-monitor init` but no such CLI command is registered"
+        )
 
 
 # ── Fix 4: QueryEvents guard — NotSupported only, everything else raises ─

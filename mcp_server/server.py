@@ -21,7 +21,6 @@ Source: https://github.com/zw008/VMware-Monitor
 License: MIT
 """
 
-
 import functools
 import logging
 import os
@@ -41,6 +40,16 @@ from vmware_monitor.ops.health import (
     get_recent_events,
 )
 from vmware_monitor.ops.health import get_host_services as _ops_get_host_services
+from vmware_monitor.ops.activity import get_active_sessions, get_active_tasks
+from vmware_monitor.ops.capacity import (
+    get_datastore_capacity,
+    get_resource_pool_usage,
+)
+from vmware_monitor.ops.infra_health import (
+    get_certificate_status,
+    get_license_status,
+    get_ntp_status,
+)
 from vmware_monitor.ops.inventory import (
     list_clusters,
     list_datastores,
@@ -48,9 +57,12 @@ from vmware_monitor.ops.inventory import (
     list_networks,
     list_vms,
 )
+from vmware_monitor.ops.performance import get_host_performance, get_vm_performance
+from vmware_monitor.ops.snapshots import list_snapshot_aging
 from vmware_monitor.ops.vm_info import get_vm_info, list_snapshots
 
 logger = logging.getLogger(__name__)
+
 
 def _safe_error(exc: Exception, tool: str) -> str:
     """Return an agent-safe error string; log full detail server-side only.
@@ -124,7 +136,14 @@ def _get_connection(target: Optional[str] = None) -> Any:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def list_virtual_machines(
@@ -168,7 +187,14 @@ def list_virtual_machines(
     )
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def list_esxi_hosts(
@@ -188,7 +214,14 @@ def list_esxi_hosts(
     return results
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def list_all_datastores(
@@ -208,7 +241,14 @@ def list_all_datastores(
     return results
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def list_all_clusters(
@@ -228,7 +268,14 @@ def list_all_clusters(
     return results
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def list_all_networks(
@@ -253,7 +300,14 @@ def list_all_networks(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def get_alarms(
@@ -276,7 +330,14 @@ def get_alarms(
     return results
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def get_events(
@@ -295,7 +356,14 @@ def get_events(
     return get_recent_events(si, hours=hours, severity=severity)
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def get_host_sensors(
@@ -320,7 +388,14 @@ def get_host_sensors(
     return results
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def get_host_services(
@@ -346,7 +421,14 @@ def get_host_services(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def vm_info(vm_name: str, target: Optional[str] = None) -> dict:
@@ -360,7 +442,14 @@ def vm_info(vm_name: str, target: Optional[str] = None) -> dict:
     return get_vm_info(si, vm_name)
 
 
-@mcp.tool(annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
 def vm_list_snapshots(vm_name: str, target: Optional[str] = None) -> list[dict]:
@@ -379,6 +468,334 @@ def vm_list_snapshots(vm_name: str, target: Optional[str] = None) -> list[dict]:
     """
     si = _get_connection(target)
     return list_snapshots(si, vm_name)
+
+
+# ---------------------------------------------------------------------------
+# Performance tools (read-only — real-time PerfManager counters)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def host_performance(
+    host_name: Optional[str] = None,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[dict]:
+    """[READ] Real-time CPU/memory/disk/network utilisation per ESXi host.
+
+    Unlike list_esxi_hosts (static config: cores, total GB), this returns LIVE
+    utilisation from the 20-second PerfManager interval: cpu_usage_pct,
+    mem_usage_pct, mem_consumed_mb, disk_kbps, net_kbps. Busiest hosts first.
+    Disconnected hosts and hosts without a real-time provider are skipped (not
+    reported as zero). Point-in-time only — no historical trend is retained.
+
+    Args:
+        host_name: Filter to a single host by exact name (None = all hosts).
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of host rows to return (None = all).
+    """
+    si = _get_connection(target)
+    return get_host_performance(si, host_name=host_name, limit=limit)
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def vm_performance(
+    vm_name: Optional[str] = None,
+    target: Optional[str] = None,
+    limit: Optional[int] = 25,
+) -> list[dict]:
+    """[READ] Real-time CPU/memory/disk/network utilisation per virtual machine.
+
+    LIVE utilisation (cpu_usage_pct, mem_usage_pct, mem_consumed_mb,
+    disk_read_kbps, disk_write_kbps, net_kbps), busiest VMs first. Only
+    powered-on VMs have a real-time provider; powered-off VMs are skipped.
+    Defaults to the top 25 — pass limit=None for the full fleet. Point-in-time
+    only; for trends use a metrics store.
+
+    Args:
+        vm_name: Filter to a single VM by exact name (None = all powered-on VMs).
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of VM rows to return (default 25; None = all).
+    """
+    si = _get_connection(target)
+    return get_vm_performance(si, vm_name=vm_name, limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# Snapshot aging (read-only — inventory-wide sprawl analysis)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def snapshot_aging(
+    age_threshold_days: int = 30,
+    only_old: bool = False,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> dict:
+    """[READ] Sweep ALL VMs for snapshots and flag old / sprawling ones.
+
+    Where vm_list_snapshots covers one VM, this scans the whole inventory and
+    judges age. Returns {total_snapshots, old_snapshots, vms_with_snapshots,
+    threshold_days, snapshots[], hint}. Each row has age_days, is_old, and an
+    est_size_mb lower-bound (snapshotData+snapshotMemory; delta-disk growth is
+    not separable per-snapshot via the API). Read-only — delete snapshots via
+    vmware-aiops.
+
+    Args:
+        age_threshold_days: Age above which a snapshot is flagged "old" (default 30).
+        only_old: When True, return only snapshots older than the threshold.
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of snapshot rows to return (None = all).
+    """
+    si = _get_connection(target)
+    return list_snapshot_aging(
+        si, age_threshold_days=age_threshold_days, only_old=only_old, limit=limit
+    )
+
+
+# ---------------------------------------------------------------------------
+# Infrastructure health (read-only — certificates, licenses, NTP)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def certificate_status(
+    warn_days: int = 30,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[dict]:
+    """[READ] Per-host ESXi management certificate expiry.
+
+    An expired ESXi cert drops host management — this surfaces it before the
+    outage. Returns host, not_after, days_until_expiry, and an ``expiring`` flag
+    (within warn_days or already expired), soonest-to-expire first. Uses the
+    API-native certificateInfo (no PEM parsing).
+
+    Args:
+        warn_days: Flag certs expiring within this many days (default 30).
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of host rows to return (None = all).
+    """
+    si = _get_connection(target)
+    return get_certificate_status(si, warn_days=warn_days, limit=limit)
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def license_status(target: Optional[str] = None) -> list[dict]:
+    """[READ] vCenter/ESXi license inventory with usage and expiry.
+
+    Returns one row per license: name, edition_key, total/used units,
+    unlimited flag (total==0), and expiration. Use to catch over-allocation or
+    an approaching license expiry.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return get_license_status(si)
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def ntp_status(
+    host_name: Optional[str] = None,
+    target: Optional[str] = None,
+) -> list[dict]:
+    """[READ] Per-host NTP configuration health (servers + ntpd service state).
+
+    Returns host, ntp_servers, ntpd_running, ntpd_policy, and a ``healthy`` flag
+    (servers configured AND ntpd running). NOTE: the SOAP API does not expose
+    the live clock offset/stratum — this reports configuration health only (the
+    actionable signal). For actual offset use esxcli on the host.
+
+    Args:
+        host_name: Filter to a single host by exact name (None = all hosts).
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return get_ntp_status(si, host_name=host_name)
+
+
+# ---------------------------------------------------------------------------
+# Capacity analytics (read-only — over-commit and resource pools)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def datastore_capacity(
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[dict]:
+    """[READ] Per-datastore capacity with thin-provisioning over-commit.
+
+    Adds the risk signal list_all_datastores lacks: overcommit_pct
+    (provisioned / capacity * 100). Over 100% means more space is promised to
+    VMs than physically exists — a thin datastore can fill up while still
+    showing free space. Returns capacity_gb, free_gb, committed_gb,
+    provisioned_gb, used_pct, overcommit_pct; riskiest first. Point-in-time.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of datastore rows to return (None = all).
+    """
+    si = _get_connection(target)
+    return get_datastore_capacity(si, limit=limit)
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def resource_pool_usage(
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[dict]:
+    """[READ] Per-resource-pool CPU/memory reservation, limit, and current usage.
+
+    Returns name, cpu_reservation_mhz, cpu_limit_mhz, cpu_usage_mhz,
+    mem_reservation_mb, mem_limit_mb, mem_usage_mb. A limit of -1 means
+    unlimited. Use to spot pools near their reservation/limit. Sorted by memory
+    usage descending.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of pool rows to return (None = all).
+    """
+    si = _get_connection(target)
+    return get_resource_pool_usage(si, limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# Activity tracking (read-only — tasks and sessions)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def active_tasks(
+    include_recent: bool = True,
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[dict]:
+    """[READ] In-flight (and optionally just-completed) vCenter tasks.
+
+    Answers "why is the cluster busy?". Returns name, entity, state,
+    progress_pct, start_time, user, active flag, and error (for failed recent
+    tasks). Running/queued first. Read-only — cancel tasks via vmware-aiops.
+
+    Args:
+        include_recent: Also include recently completed/failed tasks (default True).
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of task rows to return (None = all).
+    """
+    si = _get_connection(target)
+    return get_active_tasks(si, include_recent=include_recent, limit=limit)
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def active_sessions(
+    target: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[dict]:
+    """[READ] Currently authenticated vCenter/ESXi sessions (who is logged in).
+
+    Returns user_name, full_name, login_time, last_active, ip_address, and a
+    ``current`` flag for this skill's own session. Requires Sessions privilege;
+    low-privilege accounts get a single explanatory row instead of a traceback.
+    Read-only — terminating sessions is not supported here.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        limit: Max number of session rows to return (None = all).
+    """
+    si = _get_connection(target)
+    return get_active_sessions(si, limit=limit)
 
 
 # ---------------------------------------------------------------------------

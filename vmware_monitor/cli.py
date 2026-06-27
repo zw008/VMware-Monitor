@@ -10,26 +10,29 @@ This CLI contains ONLY read-only commands. No destructive operations exist:
 
 from __future__ import annotations
 
-import functools
 import signal
 from pathlib import Path
-from typing import Annotated, Any, Callable
+from typing import Annotated
 
 import typer
-from rich.console import Console
 from rich.table import Table
 
+from vmware_monitor import cli_observability
+from vmware_monitor.cli_base import (
+    ConfigOption,
+    TargetOption,
+    audit as _audit,
+    cli_errors as _cli_errors,
+    console,
+    get_connection as _get_connection,
+)
 from vmware_monitor.config import CONFIG_DIR
-from vmware_monitor.notify.audit import AuditLogger
-
-_audit = AuditLogger()
 
 app = typer.Typer(
     name="vmware-monitor",
     help="VMware vCenter/ESXi read-only monitoring. No destructive operations.",
     no_args_is_help=True,
 )
-console = Console()
 
 # Sub-commands (read-only only)
 inventory_app = typer.Typer(help="Query vCenter/ESXi inventory (read-only).")
@@ -44,69 +47,8 @@ app.add_typer(vm_app, name="vm")
 app.add_typer(scan_app, name="scan")
 app.add_typer(daemon_app, name="daemon")
 
-TargetOption = Annotated[str | None, typer.Option("--target", "-t", help="Target name from config")]
-ConfigOption = Annotated[Path | None, typer.Option("--config", "-c", help="Config file path")]
-
-
-def _fail(message: str) -> None:
-    """Print one red teaching line and exit 1 (no traceback)."""
-    console.print(f"[red]{message}[/red]")
-    raise typer.Exit(1)
-
-
-def _cli_errors(fn: Callable[..., Any]) -> Callable[..., Any]:
-    """Translate known failures into one red teaching line + exit 1.
-
-    Without this, config/auth/network problems surface as raw tracebacks.
-    Catches: FileNotFoundError, KeyError, OSError (incl. socket errors and
-    ConnectionError), VMNotFoundError, and vim/vmodl API faults.
-    """
-
-    @functools.wraps(fn)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        from pyVmomi import vmodl
-
-        from vmware_monitor.ops.vm_info import VMNotFoundError
-
-        try:
-            return fn(*args, **kwargs)
-        except typer.Exit:
-            raise
-        except VMNotFoundError as e:
-            _fail(f"{e}. Run 'vmware-monitor inventory vms' to see available VMs.")
-        except FileNotFoundError as e:
-            _fail(
-                f"Config file missing: {e}. Run: mkdir -p ~/.vmware-monitor && "
-                "cp config.example.yaml ~/.vmware-monitor/config.yaml"
-            )
-        except KeyError as e:
-            _fail(
-                f"Missing config key or password env var: {e}. "
-                "Check ~/.vmware-monitor/config.yaml and ~/.vmware-monitor/.env."
-            )
-        except vmodl.MethodFault as e:
-            _fail(
-                f"vSphere API fault: {getattr(e, 'msg', None) or type(e).__name__}. "
-                "Run 'vmware-monitor doctor' to verify connectivity and credentials."
-            )
-        except (ConnectionError, OSError) as e:
-            _fail(
-                f"Connection failed: {e}. "
-                "Run 'vmware-monitor doctor' to verify connectivity and credentials."
-            )
-
-    return wrapper
-
-
-def _get_connection(target: str | None, config_path: Path | None = None):
-    """Helper to get a pyVmomi connection.  Returns (si, cfg, target_name)."""
-    from vmware_monitor.config import load_config
-    from vmware_monitor.connection import ConnectionManager
-
-    cfg = load_config(config_path)
-    mgr = ConnectionManager(cfg)
-    target_name = target or cfg.default_target.name
-    return mgr.connect(target), cfg, target_name
+# Observability command groups (perf/capacity/infra/snapshots/activity).
+cli_observability.register(app)
 
 
 # ─── Inventory ────────────────────────────────────────────────────────────────
@@ -544,6 +486,21 @@ def daemon_stop() -> None:
         console.print(f"[red]Failed to stop daemon: {e}[/]")
         return
     pid_file.unlink(missing_ok=True)
+
+
+@app.command("init")
+def init_cmd(
+    force: Annotated[
+        bool, typer.Option("--force", help="Overwrite an existing config without asking")
+    ] = False,
+    skip_test: Annotated[
+        bool, typer.Option("--skip-test", help="Don't run a connection test after writing config")
+    ] = False,
+) -> None:
+    """Interactive first-run setup: write config.yaml + .env, then verify."""
+    from vmware_monitor.init_wizard import run_init
+
+    raise typer.Exit(run_init(force=force, skip_test=skip_test))
 
 
 @app.command("doctor")
