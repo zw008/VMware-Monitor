@@ -1,3 +1,20 @@
+## Unreleased
+
+### Fixed
+- **Large-inventory scale (GitHub issue #31 on VMware-AIops).** Read-only
+  inventory tools (`list_virtual_machines`, `list_esxi_hosts`,
+  `list_all_datastores`, `list_all_clusters`, `list_all_networks`, and
+  `find_vm_by_name`) walked a container view and then read pyVmomi *lazy*
+  properties per object (`vm.config.hardware.numCPU`, `vm.runtime.host.name`,
+  `len(host.vm)`, per-VM `folder_path` walk …) — each a separate SOAP round-trip.
+  On large vCenters (thousands of VMs / hundreds of hosts) this meant tens of
+  thousands of round-trips, so even `limit=20` queries timed out. All of these
+  now fetch every needed property in a single `PropertyCollector.RetrievePropertiesEx`
+  call (paged via continuation tokens); `folder_path` is resolved from a batched
+  folder map. Output shape is unchanged. Same root cause reported against
+  VMware-AIops by juanpf-ha (~8,000-VM / ~340-host environment); fixed here in
+  the sibling read-only skill too.
+
 ## v1.7.0 (2026-06-27) — guided onboarding + teaching auth errors
 
 ### Added

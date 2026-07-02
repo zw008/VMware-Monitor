@@ -75,18 +75,20 @@ def test_get_host_services_filters_by_host_name() -> None:
 
 
 def test_list_networks_returns_name_and_vm_count() -> None:
+    from unittest.mock import patch
+
     from vmware_monitor.ops.inventory import list_networks
 
-    net = MagicMock()
-    net.name = "VM Network"
-    net.vm = [MagicMock(), MagicMock()]
-    net.summary.accessible = True
-
-    si = MagicMock()
-    container = si.RetrieveContent.return_value.viewManager.CreateContainerView.return_value
-    container.view = [net]
-
-    rows = list_networks(si)
+    props = {
+        "name": "VM Network",
+        "vm": [MagicMock(), MagicMock()],
+        "summary.accessible": True,
+    }
+    with patch(
+        "vmware_monitor.ops.inventory._collect",
+        return_value=[(MagicMock(), props)],
+    ):
+        rows = list_networks(MagicMock())
     assert rows == [{"name": "VM Network", "vm_count": 2, "accessible": True}]
 
 
