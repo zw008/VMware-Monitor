@@ -1,4 +1,4 @@
-## Unreleased
+## v1.7.1 (2026-07-02) — large-inventory scale fix (PropertyCollector, issue #31)
 
 ### Fixed
 - **Large-inventory scale (GitHub issue #31 on VMware-AIops).** Read-only
