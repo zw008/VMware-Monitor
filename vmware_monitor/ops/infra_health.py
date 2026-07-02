@@ -23,20 +23,13 @@ from typing import TYPE_CHECKING
 from pyVmomi import vim
 from vmware_policy import sanitize
 
+from vmware_monitor.ops._collect import _collect
+
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
 
 # Days-until-expiry below which a certificate/license is flagged.
 CERT_WARN_DAYS = 30
-
-
-def _get_objects(si: ServiceInstance, obj_type: list) -> list:
-    content = si.RetrieveContent()
-    container = content.viewManager.CreateContainerView(content.rootFolder, obj_type, True)
-    try:
-        return list(container.view)
-    finally:
-        container.Destroy()
 
 
 def _days_until(when: datetime | None, now: datetime) -> int | None:
@@ -65,14 +58,18 @@ def get_certificate_status(
     """
     now = datetime.now(tz=timezone.utc)
     results: list[dict] = []
-    for host in _get_objects(si, [vim.HostSystem]):
-        cert_mgr = getattr(host.configManager, "certificateManager", None)
+    # Batch name + the certificateManager reference for every host in one
+    # PropertyCollector call (issue #31 class). certificateInfo lives on the
+    # HostCertificateManager managed object, which a HostSystem container view
+    # cannot cross, so that one read remains per host.
+    for _obj, p in _collect(si, [vim.HostSystem], ["name", "configManager.certificateManager"]):
+        cert_mgr = p.get("configManager.certificateManager")
         info = getattr(cert_mgr, "certificateInfo", None) if cert_mgr else None
         not_after = getattr(info, "notAfter", None) if info else None
         days = _days_until(not_after, now)
         results.append(
             {
-                "host": sanitize(host.name),
+                "host": sanitize(p.get("name", "")),
                 "not_after": str(not_after) if not_after else "unknown",
                 "days_until_expiry": days,
                 "expiring": bool(days is not None and days <= warn_days),
@@ -126,16 +123,22 @@ def get_ntp_status(
         host_name: Filter to a single host by exact name (None = all hosts).
     """
     results: list[dict] = []
-    for host in _get_objects(si, [vim.HostSystem]):
-        if host_name and host.name != host_name:
+    # Batch name + dateTimeInfo + the serviceSystem reference for every host in
+    # one PropertyCollector call (issue #31 class). Fetching config.dateTimeInfo
+    # as a narrow path avoids pulling the whole (large) host config; serviceInfo
+    # remains one read per matched host (managed-object boundary).
+    ntp_props = ["name", "config.dateTimeInfo", "configManager.serviceSystem"]
+    for _obj, p in _collect(si, [vim.HostSystem], ntp_props):
+        name = p.get("name", "")
+        if host_name and name != host_name:
             continue
-        dt_info = getattr(host.config, "dateTimeInfo", None) if host.config else None
+        dt_info = p.get("config.dateTimeInfo")
         ntp_cfg = getattr(dt_info, "ntpConfig", None) if dt_info else None
         servers = list(getattr(ntp_cfg, "server", []) or []) if ntp_cfg else []
 
         running = False
         policy = "unknown"
-        svc_system = getattr(host.configManager, "serviceSystem", None)
+        svc_system = p.get("configManager.serviceSystem")
         if svc_system and svc_system.serviceInfo:
             for svc in svc_system.serviceInfo.service:
                 if svc.key == "ntpd":
@@ -145,7 +148,7 @@ def get_ntp_status(
 
         results.append(
             {
-                "host": sanitize(host.name),
+                "host": sanitize(name),
                 "ntp_servers": [sanitize(s) for s in servers],
                 "ntpd_running": running,
                 "ntpd_policy": policy,

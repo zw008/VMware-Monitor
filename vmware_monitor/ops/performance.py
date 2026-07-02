@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING
 from pyVmomi import vim
 from vmware_policy import sanitize
 
+from vmware_monitor.ops._collect import _collect
+
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
 
@@ -45,15 +47,6 @@ _VM_COUNTERS: dict[str, tuple[str, float, str]] = {
     "virtualDisk.write.average": ("disk_write_kbps", 1.0, "KB/s"),
     "net.usage.average": ("net_kbps", 1.0, "KB/s"),
 }
-
-
-def _get_objects(si: ServiceInstance, obj_type: list) -> list:
-    content = si.RetrieveContent()
-    container = content.viewManager.CreateContainerView(content.rootFolder, obj_type, True)
-    try:
-        return list(container.view)
-    finally:
-        container.Destroy()
 
 
 def _counter_map(perf_mgr: vim.PerformanceManager) -> dict[str, int]:
@@ -137,16 +130,20 @@ def get_host_performance(
     perf = content.perfManager
     counter_ids = _counter_map(perf)
 
+    # Batch name + connectionState for every host in one PropertyCollector call,
+    # then drive QueryPerf from that set (issue #31: the per-host lazy reads used
+    # to be one round-trip each before any limit applied).
     results: list[dict] = []
-    for host in _get_objects(si, [vim.HostSystem]):
-        if host_name and host.name != host_name:
+    for host, p in _collect(si, [vim.HostSystem], ["name", "runtime.connectionState"]):
+        name = p.get("name", "")
+        if host_name and name != host_name:
             continue
-        if str(host.runtime.connectionState) != "connected":
+        if str(p.get("runtime.connectionState", "")) != "connected":
             continue
         metrics = _sample_entity(perf, counter_ids, host, _HOST_COUNTERS)
         if metrics is None:
             continue
-        row = {"host": sanitize(host.name)}
+        row = {"host": sanitize(name)}
         row.update(metrics)
         results.append(row)
 
@@ -176,16 +173,20 @@ def get_vm_performance(
     perf = content.perfManager
     counter_ids = _counter_map(perf)
 
+    # Batch name + powerState for every VM in one PropertyCollector call, then
+    # drive QueryPerf from that set (issue #31: the per-VM lazy reads used to be
+    # one round-trip each before any limit applied).
     results: list[dict] = []
-    for vm in _get_objects(si, [vim.VirtualMachine]):
-        if vm_name and vm.name != vm_name:
+    for vm, p in _collect(si, [vim.VirtualMachine], ["name", "runtime.powerState"]):
+        name = p.get("name", "")
+        if vm_name and name != vm_name:
             continue
-        if str(vm.runtime.powerState) != "poweredOn":
+        if str(p.get("runtime.powerState", "")) != "poweredOn":
             continue
         metrics = _sample_entity(perf, counter_ids, vm, _VM_COUNTERS)
         if metrics is None:
             continue
-        row = {"name": sanitize(vm.name)}
+        row = {"name": sanitize(name)}
         row.update(metrics)
         results.append(row)
 

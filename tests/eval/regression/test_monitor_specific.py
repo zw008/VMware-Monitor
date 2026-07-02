@@ -20,6 +20,8 @@ from unittest.mock import MagicMock
 def test_hardware_status_reads_healthstate_not_sensortype() -> None:
     """sensor.sensorType is the category (temperature/voltage/fan...), not the
     health. The green/yellow/red status lives in sensor.healthState.key."""
+    from unittest.mock import patch
+
     from vmware_monitor.ops.health import get_host_hardware_status
 
     sensor = MagicMock()
@@ -29,15 +31,14 @@ def test_hardware_status_reads_healthstate_not_sensortype() -> None:
     sensor.currentReading = 4500
     sensor.baseUnits = "C"
 
-    host = MagicMock()
-    host.name = "esxi-1"
-    host.runtime.healthSystemRuntime.systemHealthInfo.numericSensorInfo = [sensor]
+    runtime_health = MagicMock()
+    runtime_health.systemHealthInfo.numericSensorInfo = [sensor]
 
-    si = MagicMock()
-    container = si.RetrieveContent.return_value.viewManager.CreateContainerView.return_value
-    container.view = [host]
-
-    rows = get_host_hardware_status(si)
+    # get_host_hardware_status now batches name + runtime.healthSystemRuntime via
+    # PropertyCollector instead of walking a ContainerView with lazy access.
+    collected = [(MagicMock(), {"name": "esxi-1", "runtime.healthSystemRuntime": runtime_health})]
+    with patch("vmware_monitor.ops.health._collect", return_value=collected):
+        rows = get_host_hardware_status(MagicMock())
 
     assert rows, "expected one sensor row"
     assert rows[0]["status"] == "green", (

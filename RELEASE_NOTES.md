@@ -1,3 +1,14 @@
+## v1.7.2 (2026-07-02) — read-path scale beyond inventory (issue #31 follow-up)
+
+### Fixed
+- **All monitoring read paths at scale.** The v1.7.1 PropertyCollector fix
+  covered inventory only. Snapshot aging (heavy per-VM `layoutEx`), VM/host
+  performance, active alarms, host hardware/services status, certificate/NTP
+  status, datastore/resource-pool capacity, and host-log scan each walked a
+  container view reading lazy properties per object — N+1 SOAP round-trips that
+  timed out on large vCenters. All now batch via a shared `PropertyCollector`
+  helper (`ops/_collect.py`). Output shape unchanged.
+
 ## v1.7.1 (2026-07-02) — large-inventory scale fix (PropertyCollector, issue #31)
 
 ### Fixed

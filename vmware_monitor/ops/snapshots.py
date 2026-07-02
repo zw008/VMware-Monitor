@@ -17,6 +17,8 @@ from typing import TYPE_CHECKING
 from pyVmomi import vim
 from vmware_policy import sanitize
 
+from vmware_monitor.ops._collect import _collect
+
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
 
@@ -26,15 +28,6 @@ if TYPE_CHECKING:
 _SNAPSHOT_FILE_TYPES = {"snapshotData", "snapshotMemory"}
 
 DEFAULT_AGE_THRESHOLD_DAYS = 30
-
-
-def _get_objects(si: ServiceInstance, obj_type: list) -> list:
-    content = si.RetrieveContent()
-    container = content.viewManager.CreateContainerView(content.rootFolder, obj_type, True)
-    try:
-        return list(container.view)
-    finally:
-        container.Destroy()
 
 
 def _walk_snapshots(nodes: list, vm_name: str, now: datetime, level: int = 0) -> list[dict]:
@@ -63,14 +56,13 @@ def _walk_snapshots(nodes: list, vm_name: str, now: datetime, level: int = 0) ->
     return rows
 
 
-def _snapshot_size_mb(vm: vim.VirtualMachine) -> float:
+def _snapshot_size_mb(layout: vim.vm.FileLayoutEx | None) -> float:
     """Lower-bound estimate of snapshot space for a VM, in MB.
 
-    Sums snapshotData/snapshotMemory files from layoutEx. Returns 0.0 when the
-    layout is unavailable. This under-counts delta-disk growth — surfaced to the
-    user as an estimate, never as an exact figure.
+    Sums snapshotData/snapshotMemory files from a prefetched ``layoutEx`` object.
+    Returns 0.0 when the layout is unavailable. This under-counts delta-disk
+    growth — surfaced to the user as an estimate, never as an exact figure.
     """
-    layout = getattr(vm, "layoutEx", None)
     if not layout or not getattr(layout, "file", None):
         return 0.0
     total = 0
@@ -107,13 +99,16 @@ def list_snapshot_aging(
     rows: list[dict] = []
     vms_with_snaps = 0
 
-    for vm in _get_objects(si, [vim.VirtualMachine]):
-        snap_info = getattr(vm, "snapshot", None)
+    # Batch name/snapshot/layoutEx for every VM in one PropertyCollector call.
+    # The heavy layoutEx (used by _snapshot_size_mb) and the snapshot tree are
+    # fetched server-side instead of one lazy round-trip per VM (issue #31).
+    for _obj, p in _collect(si, [vim.VirtualMachine], ["name", "snapshot", "layoutEx"]):
+        snap_info = p.get("snapshot")
         if not snap_info or not getattr(snap_info, "rootSnapshotList", None):
             continue
         vms_with_snaps += 1
-        vm_name = sanitize(vm.name)
-        est_size = _snapshot_size_mb(vm)
+        vm_name = sanitize(p.get("name", ""))
+        est_size = _snapshot_size_mb(p.get("layoutEx"))
         vm_rows = _walk_snapshots(snap_info.rootSnapshotList, vm_name, now)
         # Attribute the VM-level size estimate to the FIRST root row only, so a
         # VM with several root snapshots (branched trees after reverts) reports

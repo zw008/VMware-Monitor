@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 from pyVmomi import vim, vmodl
 from vmware_policy import sanitize
 
+from vmware_monitor.ops._collect import _collect
+
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
 
@@ -88,61 +90,75 @@ def _get_event_entity(event: object) -> str | None:
     return None
 
 
+def _append_alarm(alarm_state: object, name_map: dict, results: list[dict]) -> None:
+    """Turn one triggered AlarmState into a result row, appending to ``results``."""
+    severity = str(alarm_state.overallStatus)
+    severity_map = {"red": "critical", "yellow": "warning", "green": "info"}
+    # The alarm's source entity name is prefetched in ``name_map``; fall back to
+    # a guarded lazy read only when it is not there (e.g. rootFolder alarms). One
+    # bad/inaccessible entity must not kill the whole alarm listing.
+    entity_ref = alarm_state.entity
+    try:
+        raw_entity_name = name_map.get(entity_ref)
+    except TypeError:
+        raw_entity_name = None  # entity ref not hashable (unusual) — read lazily
+    if raw_entity_name is None:
+        try:
+            raw_entity_name = getattr(entity_ref, "name", None)
+        except Exception:
+            raw_entity_name = None
+    entity_name = sanitize(raw_entity_name) if raw_entity_name else "[inaccessible]"
+    alarm_name = sanitize(alarm_state.alarm.info.name)
+    acknowledged = getattr(alarm_state, "acknowledged", False)
+
+    actions: list[str] = []
+    if not acknowledged:
+        actions.append(
+            f"vmware-aiops: acknowledge_vcenter_alarm"
+            f"(entity_name='{entity_name}', alarm_name='{alarm_name}')"
+        )
+    actions.append(
+        f"vmware-aiops: reset_vcenter_alarm"
+        f"(entity_name='{entity_name}', alarm_name='{alarm_name}')"
+    )
+
+    results.append({
+        "severity": severity_map.get(severity, severity),
+        "alarm_name": alarm_name,
+        "entity_name": entity_name,
+        "entity_type": type(entity_ref).__name__,
+        "time": str(alarm_state.time),
+        "acknowledged": acknowledged,
+        "suggested_actions": actions,
+    })
+
+
 def get_active_alarms(si: ServiceInstance) -> list[dict]:
     """Get all active/triggered alarms across the inventory."""
     content = si.RetrieveContent()
-    results = []
+    results: list[dict] = []
+    name_map: dict = {}
+    triggered_lists: list[list] = []
 
-    def _collect_alarms(entity: vim.ManagedEntity) -> None:
-        if not hasattr(entity, "triggeredAlarmState"):
-            return
-        for alarm_state in entity.triggeredAlarmState:
-            severity = str(alarm_state.overallStatus)
-            severity_map = {"red": "critical", "yellow": "warning", "green": "info"}
-            # entity.name is a server round-trip that can fail for entities
-            # the session cannot access — one bad entity must not kill the
-            # whole alarm listing.
-            try:
-                raw_entity_name = getattr(alarm_state.entity, "name", None)
-            except Exception:
-                raw_entity_name = None
-            entity_name = sanitize(raw_entity_name) if raw_entity_name else "[inaccessible]"
-            alarm_name = sanitize(alarm_state.alarm.info.name)
-            acknowledged = getattr(alarm_state, "acknowledged", False)
+    # rootFolder alarms: a single object read (O(1), not the N+1 path).
+    root = content.rootFolder
+    root_triggered = getattr(root, "triggeredAlarmState", None) or []
+    if root_triggered:
+        triggered_lists.append(root_triggered)
 
-            actions: list[str] = []
-            if not acknowledged:
-                actions.append(
-                    f"vmware-aiops: acknowledge_vcenter_alarm"
-                    f"(entity_name='{entity_name}', alarm_name='{alarm_name}')"
-                )
-            actions.append(
-                f"vmware-aiops: reset_vcenter_alarm"
-                f"(entity_name='{entity_name}', alarm_name='{alarm_name}')"
-            )
+    # Datacenters, clusters, hosts: batch name + triggeredAlarmState in one
+    # PropertyCollector call per type instead of a lazy round-trip per entity
+    # (N+1 on large inventories — GitHub issue #31 class).
+    for obj_type in (vim.Datacenter, vim.ClusterComputeResource, vim.HostSystem):
+        for obj, p in _collect(si, [obj_type], ["name", "triggeredAlarmState"]):
+            name_map[obj] = p.get("name")
+            triggered = p.get("triggeredAlarmState")
+            if triggered:
+                triggered_lists.append(triggered)
 
-            results.append({
-                "severity": severity_map.get(severity, severity),
-                "alarm_name": alarm_name,
-                "entity_name": entity_name,
-                "entity_type": type(alarm_state.entity).__name__,
-                "time": str(alarm_state.time),
-                "acknowledged": acknowledged,
-                "suggested_actions": actions,
-            })
-
-    _collect_alarms(content.rootFolder)
-    # Also check datacenters, clusters, hosts
-    container_types = [vim.Datacenter, vim.ClusterComputeResource, vim.HostSystem]
-    for obj_type in container_types:
-        container = content.viewManager.CreateContainerView(
-            content.rootFolder, [obj_type], True
-        )
-        try:
-            for entity in container.view:
-                _collect_alarms(entity)
-        finally:
-            container.Destroy()
+    for triggered in triggered_lists:
+        for alarm_state in triggered:
+            _append_alarm(alarm_state, name_map, results)
 
     # Deduplicate by alarm + entity
     seen = set()
@@ -211,56 +227,52 @@ def get_recent_events(
 
 def get_host_hardware_status(si: ServiceInstance) -> list[dict]:
     """Get hardware sensor status for all hosts."""
-    content = si.RetrieveContent()
-    container = content.viewManager.CreateContainerView(
-        content.rootFolder, [vim.HostSystem], True
-    )
+    # Batch name + healthSystemRuntime for every host in one PropertyCollector
+    # call; the sensor list arrives inline instead of a lazy round-trip per host
+    # (issue #31 class). healthSystemRuntime is a data object, not a managed ref.
     results = []
-    try:
-        for host in container.view:
-            runtime_health = host.runtime.healthSystemRuntime
-            if not runtime_health or not runtime_health.systemHealthInfo:
-                continue
-            for sensor in runtime_health.systemHealthInfo.numericSensorInfo:
-                # Health (green/yellow/red) lives in healthState.key;
-                # sensorType is the category (temperature/voltage/fan...).
-                health = getattr(sensor, "healthState", None)
-                status = str(health.key) if health is not None else "unknown"
-                results.append({
-                    "host": sanitize(host.name),
-                    "sensor_name": sanitize(sensor.name),
-                    "type": str(getattr(sensor, "sensorType", "unknown")),
-                    "reading": sensor.currentReading,
-                    "unit": sensor.baseUnits,
-                    "status": status,
-                })
-    finally:
-        container.Destroy()
+    for _obj, p in _collect(si, [vim.HostSystem], ["name", "runtime.healthSystemRuntime"]):
+        runtime_health = p.get("runtime.healthSystemRuntime")
+        if not runtime_health or not runtime_health.systemHealthInfo:
+            continue
+        host_name = sanitize(p.get("name", ""))
+        for sensor in runtime_health.systemHealthInfo.numericSensorInfo:
+            # Health (green/yellow/red) lives in healthState.key;
+            # sensorType is the category (temperature/voltage/fan...).
+            health = getattr(sensor, "healthState", None)
+            status = str(health.key) if health is not None else "unknown"
+            results.append({
+                "host": host_name,
+                "sensor_name": sanitize(sensor.name),
+                "type": str(getattr(sensor, "sensorType", "unknown")),
+                "reading": sensor.currentReading,
+                "unit": sensor.baseUnits,
+                "status": status,
+            })
     return results
 
 
 def get_host_services(si: ServiceInstance, host_name: str | None = None) -> list[dict]:
     """Get service status for hosts."""
-    content = si.RetrieveContent()
-    container = content.viewManager.CreateContainerView(
-        content.rootFolder, [vim.HostSystem], True
-    )
+    # Batch name + the serviceSystem reference for every host in one
+    # PropertyCollector call (issue #31 class): the per-host name/configManager
+    # lazy chain is eliminated. serviceInfo itself lives on the HostServiceSystem
+    # managed object, which cannot be crossed by a HostSystem container view, so
+    # that one read remains per matched host.
     results = []
-    try:
-        for host in container.view:
-            if host_name and host.name != host_name:
-                continue
-            svc_system = host.configManager.serviceSystem
-            if not svc_system:
-                continue
-            for svc in svc_system.serviceInfo.service:
-                results.append({
-                    "host": sanitize(host.name),
-                    "service": svc.key,
-                    "label": sanitize(svc.label),
-                    "running": svc.running,
-                    "policy": svc.policy,
-                })
-    finally:
-        container.Destroy()
+    for _obj, p in _collect(si, [vim.HostSystem], ["name", "configManager.serviceSystem"]):
+        name = p.get("name", "")
+        if host_name and name != host_name:
+            continue
+        svc_system = p.get("configManager.serviceSystem")
+        if not svc_system:
+            continue
+        for svc in svc_system.serviceInfo.service:
+            results.append({
+                "host": sanitize(name),
+                "service": svc.key,
+                "label": sanitize(svc.label),
+                "running": svc.running,
+                "policy": svc.policy,
+            })
     return results

@@ -224,23 +224,21 @@ class _FakeRootFolder(SimpleNamespace):
 
 
 def test_get_alarms_survives_inaccessible_entity():
+    from unittest.mock import patch
+
     from vmware_monitor.ops.health import get_active_alarms
 
     good = SimpleNamespace(name="esx-01")
     root = _FakeRootFolder(
         triggeredAlarmState=[_alarm_state(_BrokenEntity()), _alarm_state(good)]
     )
-    content = SimpleNamespace(
-        rootFolder=root,
-        viewManager=SimpleNamespace(
-            CreateContainerView=lambda *a, **k: SimpleNamespace(
-                view=[], Destroy=lambda: None
-            )
-        ),
-    )
+    content = SimpleNamespace(rootFolder=root)
     si = SimpleNamespace(RetrieveContent=lambda: content)
 
-    results = get_active_alarms(si)
+    # rootFolder alarms are read directly (O(1)); the DC/cluster/host sweep goes
+    # through the batched _collect, which we stub empty for this fixture.
+    with patch("vmware_monitor.ops.health._collect", return_value=[]):
+        results = get_active_alarms(si)
     names = {r["entity_name"] for r in results}
     assert "esx-01" in names, "healthy entity must still be reported"
     assert "[inaccessible]" in names, "broken entity must appear as placeholder"

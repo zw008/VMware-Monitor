@@ -45,30 +45,26 @@ def test_cli_health_services_help_includes_host_filter() -> None:
 # ── ops behaviour (mirrors the MagicMock style in test_monitor_specific) ────
 
 
-def _si_with_hosts(hosts: list) -> MagicMock:
-    si = MagicMock()
-    container = si.RetrieveContent.return_value.viewManager.CreateContainerView.return_value
-    container.view = hosts
-    return si
-
-
 def test_get_host_services_filters_by_host_name() -> None:
+    from unittest.mock import patch
+
     from vmware_monitor.ops.health import get_host_services
 
-    def _make_host(name: str, svc_key: str) -> MagicMock:
+    def _collected_host(name: str, svc_key: str) -> tuple:
         svc = MagicMock()
         svc.key = svc_key
         svc.label = svc_key.upper()
         svc.running = True
         svc.policy = "on"
-        host = MagicMock()
-        host.name = name
-        host.configManager.serviceSystem.serviceInfo.service = [svc]
-        return host
+        svc_system = MagicMock()
+        svc_system.serviceInfo.service = [svc]
+        # get_host_services now batches name + configManager.serviceSystem via
+        # PropertyCollector; serviceInfo remains a read on the returned ref.
+        return (MagicMock(), {"name": name, "configManager.serviceSystem": svc_system})
 
-    si = _si_with_hosts([_make_host("esxi-1", "TSM-SSH"), _make_host("esxi-2", "ntpd")])
-
-    rows = get_host_services(si, host_name="esxi-2")
+    collected = [_collected_host("esxi-1", "TSM-SSH"), _collected_host("esxi-2", "ntpd")]
+    with patch("vmware_monitor.ops.health._collect", return_value=collected):
+        rows = get_host_services(MagicMock(), host_name="esxi-2")
     assert [r["host"] for r in rows] == ["esxi-2"]
     assert rows[0]["service"] == "ntpd"
     assert rows[0]["running"] is True

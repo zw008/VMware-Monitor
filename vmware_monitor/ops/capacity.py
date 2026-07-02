@@ -20,19 +20,26 @@ from typing import TYPE_CHECKING
 from pyVmomi import vim
 from vmware_policy import sanitize
 
+from vmware_monitor.ops._collect import _collect
+
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
 
 _GB = 1024**3
 
-
-def _get_objects(si: ServiceInstance, obj_type: list) -> list:
-    content = si.RetrieveContent()
-    container = content.viewManager.CreateContainerView(content.rootFolder, obj_type, True)
-    try:
-        return list(container.view)
-    finally:
-        container.Destroy()
+_DS_CAP_PROPS = [
+    "name",
+    "summary.type",
+    "summary.capacity",
+    "summary.freeSpace",
+    "summary.uncommitted",
+]
+_RP_PROPS = [
+    "name",
+    "config.cpuAllocation",
+    "config.memoryAllocation",
+    "summary.quickStats",
+]
 
 
 def get_datastore_capacity(
@@ -52,20 +59,22 @@ def get_datastore_capacity(
         si: vSphere ServiceInstance.
         limit: Max number of datastore rows to return (None = all).
     """
+    # Batch the summary fields for every datastore in one PropertyCollector call
+    # instead of a lazy ds.summary round-trip per datastore (issue #31 class;
+    # limit used to apply only after collecting all of them).
     results: list[dict] = []
-    for ds in _get_objects(si, [vim.Datastore]):
-        summary = ds.summary
-        capacity = summary.capacity or 0
-        free = summary.freeSpace or 0
-        uncommitted = getattr(summary, "uncommitted", 0) or 0
+    for _obj, p in _collect(si, [vim.Datastore], _DS_CAP_PROPS):
+        capacity = p.get("summary.capacity") or 0
+        free = p.get("summary.freeSpace") or 0
+        uncommitted = p.get("summary.uncommitted") or 0
         committed = capacity - free
         provisioned = committed + uncommitted
         used_pct = round(committed / capacity * 100, 1) if capacity else 0.0
         overcommit_pct = round(provisioned / capacity * 100, 1) if capacity else 0.0
         results.append(
             {
-                "name": sanitize(ds.name),
-                "type": summary.type,
+                "name": sanitize(p.get("name", "")),
+                "type": p.get("summary.type"),
                 "capacity_gb": round(capacity / _GB, 1),
                 "free_gb": round(free / _GB, 1),
                 "committed_gb": round(committed / _GB, 1),
@@ -95,15 +104,17 @@ def get_resource_pool_usage(
         si: vSphere ServiceInstance.
         limit: Max number of pool rows to return (None = all).
     """
+    # Batch config allocations + quickStats for every pool in one
+    # PropertyCollector call instead of lazy pool.config / pool.summary reads per
+    # pool (issue #31 class).
     results: list[dict] = []
-    for pool in _get_objects(si, [vim.ResourcePool]):
-        cfg = pool.config
-        qs = pool.summary.quickStats if pool.summary else None
-        cpu_alloc = cfg.cpuAllocation if cfg else None
-        mem_alloc = cfg.memoryAllocation if cfg else None
+    for _obj, p in _collect(si, [vim.ResourcePool], _RP_PROPS):
+        cpu_alloc = p.get("config.cpuAllocation")
+        mem_alloc = p.get("config.memoryAllocation")
+        qs = p.get("summary.quickStats")
         results.append(
             {
-                "name": sanitize(pool.name),
+                "name": sanitize(p.get("name", "")),
                 "cpu_reservation_mhz": cpu_alloc.reservation if cpu_alloc else 0,
                 "cpu_limit_mhz": cpu_alloc.limit if cpu_alloc else -1,
                 "cpu_usage_mhz": qs.overallCpuUsage if qs else 0,
