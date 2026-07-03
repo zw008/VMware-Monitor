@@ -82,7 +82,10 @@ def test_mcp_exposes_snapshot_listing() -> None:
         "certificate_status", "license_status", "ntp_status",
         "datastore_capacity", "resource_pool_usage",
         "active_tasks", "active_sessions",
+        # v1.7.3: host syslog error scan surfaced as an MCP tool (was
+        # scanner/CLI-only); requested by juanpf-ha on issue #31.
+        "host_log_scan",
     }
     missing = expected_new - tools
     assert not missing, f"observability tools missing from MCP: {sorted(missing)}"
-    assert len(tools) == 21, f"expected 21 MCP tools, got {len(tools)}: {sorted(tools)}"
+    assert len(tools) == 22, f"expected 22 MCP tools, got {len(tools)}: {sorted(tools)}"

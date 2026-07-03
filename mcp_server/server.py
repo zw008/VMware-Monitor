@@ -60,6 +60,7 @@ from vmware_monitor.ops.inventory import (
 from vmware_monitor.ops.performance import get_host_performance, get_vm_performance
 from vmware_monitor.ops.snapshots import list_snapshot_aging
 from vmware_monitor.ops.vm_info import get_vm_info, list_snapshots
+from vmware_monitor.scanner.log_scanner import scan_host_logs as _ops_scan_host_logs
 
 logger = logging.getLogger(__name__)
 
@@ -414,6 +415,42 @@ def get_host_services(
     """
     si = _get_connection(target)
     return _ops_get_host_services(si, host_name=host_name)
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def host_log_scan(
+    host_name: Optional[str] = None,
+    lines: int = 500,
+    target: Optional[str] = None,
+) -> list[dict]:
+    """[READ] Scan recent ESXi host syslog lines for error/warning patterns.
+
+    Reads the last ``lines`` entries of the hostd/vmkernel/vpxa logs on each
+    host via the diagnostic system and returns only the lines matching known
+    trouble patterns (error, fail, critical, panic, lost access, timeout, …).
+    Each entry has severity, source (``host_log:<key>``), message, time, and
+    entity (host name). Returns an empty list when no matching lines are found.
+
+    Only errors/warnings are returned, not the full log, so output stays small
+    even on large clusters. Filter to one host with ``host_name`` to keep the
+    scan fast on environments with many hosts.
+
+    Args:
+        host_name: Filter to a single host by exact name (None = all hosts).
+        lines: How many recent lines per log to scan (default 500).
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+    """
+    si = _get_connection(target)
+    return _ops_scan_host_logs(si, host_name=host_name, lines=lines)
 
 
 # ---------------------------------------------------------------------------

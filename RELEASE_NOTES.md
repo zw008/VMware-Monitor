@@ -1,3 +1,14 @@
+## v1.7.3 (2026-07-03) — host_log_scan MCP tool
+
+### Added
+- **`host_log_scan` MCP tool** (read-only). The ESXi syslog error scan — recent
+  hostd/vmkernel/vpxa lines matching error/warning patterns (error, fail,
+  critical, panic, lost access, timeout, …) — was previously only reachable as a
+  scanner/CLI path. It's now surfaced as a proper MCP tool with an optional
+  single-host filter and a `lines` window; it returns only the matching lines
+  (sanitized, injection-guarded), so output stays small even on large clusters.
+  Requested by @juanpf-ha on issue #31. MCP tool surface 21 → 22.
+
 ## v1.7.2 (2026-07-02) — read-path scale beyond inventory (issue #31 follow-up)
 
 ### Fixed

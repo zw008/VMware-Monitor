@@ -21,7 +21,7 @@ compatibility: >
 
 > **Disclaimer**: This is a community-maintained open-source project and is **not affiliated with, endorsed by, or sponsored by VMware, Inc. or Broadcom Inc.** "VMware" and "vSphere" are trademarks of Broadcom. Source code is publicly auditable at [github.com/zw008/VMware-Monitor](https://github.com/zw008/VMware-Monitor) under the MIT license.
 
-Read-only VMware vCenter/ESXi monitoring — 21 MCP tools, zero destructive code.
+Read-only VMware vCenter/ESXi monitoring — 22 MCP tools, zero destructive code.
 
 > **Code-level safety**: This skill contains NO power, create, delete, snapshot, or modify operations. Not disabled — they don't exist in the codebase.
 > **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity), [vmware-avi](https://github.com/zw008/VMware-AVI) (AVI/ALB/AKO), [vmware-harden](https://github.com/zw008/VMware-Harden) (compliance baselines).
@@ -29,7 +29,7 @@ Read-only VMware vCenter/ESXi monitoring — 21 MCP tools, zero destructive code
 
 ## What This Skill Does
 
-All 21 tools are **read-only**.
+All 22 tools are **read-only**.
 
 | Category | Capabilities |
 |----------|-------------|
@@ -143,7 +143,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | Cloud models (Claude, GPT-4o) | Either | MCP gives structured JSON I/O |
 | Automated pipelines | **MCP** | Type-safe parameters, structured output |
 
-## MCP Tools (21 — all read-only)
+## MCP Tools (22 — all read-only)
 
 | Tool | Description |
 |------|------------|
@@ -168,6 +168,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | `resource_pool_usage` | Resource-pool CPU/memory reservation, limit, and current usage |
 | `active_tasks` | In-flight (and recently completed) vCenter tasks with progress/errors |
 | `active_sessions` | Currently authenticated vCenter/ESXi sessions (who is logged in) |
+| `host_log_scan` | Scan recent ESXi host syslog (hostd/vmkernel/vpxa) for error/warning patterns; returns only matching lines, optionally filtered to one host |
 
 All tools are **read-only**. No tool can modify, create, or delete any resource.
 Performance/capacity readings are point-in-time samples — this skill retains no
