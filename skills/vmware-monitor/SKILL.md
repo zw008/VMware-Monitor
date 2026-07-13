@@ -2,8 +2,8 @@
 name: vmware-monitor
 description: >
   Use this skill for safe, risk-free queries of VMware infrastructure — code-level enforced safety means no destructive operations exist in the codebase.
-  Directly handles: list VMs/hosts/datastores/clusters, check active alarms with remediation hints, view recent events, get VM details (CPU/memory/disks/NICs/snapshots).
-  Always use vmware-monitor when the user asks to "list VMs", "check vSphere alarms", "show host status", "get VM details", "what vSphere events happened", or needs read-only VMware information before making changes.
+  Directly handles: a one-glance cross-cluster health summary (top-N issues + per-cluster status), list VMs/hosts/datastores/clusters, check active alarms with remediation hints, view recent events, get VM details (CPU/memory/disks/NICs/snapshots).
+  Always use vmware-monitor when the user asks to "list VMs", "check vSphere alarms", "show host status", "get VM details", or for a quick triage like "what's wrong in my vSphere environment", "is anything on fire", "cluster health summary" — or needs read-only VMware info before making changes.
   Do NOT use for any write operations — this skill is code-level read-only and cannot modify, create, or delete any resource.
   For VM modifications use vmware-aiops, for networking use vmware-nsx, for metrics/capacity use vmware-aria. For load balancing/AVI/AKO use vmware-avi.
 installer:
@@ -21,7 +21,7 @@ compatibility: >
 
 > **Disclaimer**: This is a community-maintained open-source project and is **not affiliated with, endorsed by, or sponsored by VMware, Inc. or Broadcom Inc.** "VMware" and "vSphere" are trademarks of Broadcom. Source code is publicly auditable at [github.com/zw008/VMware-Monitor](https://github.com/zw008/VMware-Monitor) under the MIT license.
 
-Read-only VMware vCenter/ESXi monitoring — 22 MCP tools, zero destructive code.
+Read-only VMware vCenter/ESXi monitoring — 23 MCP tools, zero destructive code.
 
 > **Code-level safety**: This skill contains NO power, create, delete, snapshot, or modify operations. Not disabled — they don't exist in the codebase.
 > **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity), [vmware-avi](https://github.com/zw008/VMware-AVI) (AVI/ALB/AKO), [vmware-harden](https://github.com/zw008/VMware-Harden) (compliance baselines).
@@ -29,10 +29,11 @@ Read-only VMware vCenter/ESXi monitoring — 22 MCP tools, zero destructive code
 
 ## What This Skill Does
 
-All 22 tools are **read-only**.
+All 23 tools are **read-only**.
 
 | Category | Capabilities |
 |----------|-------------|
+| **Cluster Triage** | One-glance `cluster_health_summary` — cross-cluster Problems/Capacity/Health rollup with an opinionated status; customizable view |
 | **Inventory** | List VMs, ESXi hosts, datastores, clusters, networks |
 | **Health** | Active alarms, recent events (filter by severity/time), hardware sensors, host services |
 | **Performance** | Real-time host & VM CPU/memory/disk/network utilisation (PerfManager) |
@@ -102,6 +103,18 @@ AI agents (especially smaller local models) can read these hints directly to det
 
 > **Diagnostic investigations**: Before running any "why is X failing / down / abnormal" workflow, follow [`references/investigation-protocol.md`](references/investigation-protocol.md). It enforces the four root-cause completeness criteria (falsifiability / sufficiency / necessity / mechanism) and the up-to-three-rounds deepening loop. Since vmware-monitor is read-only, it serves as the data source — actuation belongs to companion skills like vmware-aiops.
 
+### Cluster Health Check ("is anything on fire?" / "what's wrong right now?")
+
+**Judgment**: this is the 5-second triage glance, not an Aria replacement. One call rolls every cluster's hosts, VM power, live CPU/memory and alarms up, flattens the individual anomalies into a ranked **top-N focus list** (`top_issues`), and gives each cluster an opinionated `status`. On a big fleet, lead with the focus list — scanning per-cluster rows is too slow.
+
+1. One glance --> `vmware-monitor summary` (MCP: `cluster_health_summary`). Read `top_issues` first (worst first, each with a drill-down `next step`); the per-cluster table is context. `issues_total` shows how many anomalies existed before the top-N cap
+2. Tighten or widen the focus --> `--top 5` for the 5 most urgent, `--top 20` for more, `--top 0` to hide the list and just see the table
+3. Drill into what the list points at --> e.g. a `host_down` row → `inventory hosts`; an `alarm` row → `get_alarms`; a `capacity` row → `perf hosts` / `capacity datastores`; scope with `--cluster prod-a`
+4. Reshape the view on request --> the output ends with a friendly hint; the operator can say "add datastore free space", "drop the DRS column", "only show clusters needing attention", or "save this as an HTML page". Default layout, columns, and thresholds live in [`references/health-summary-template.md`](references/health-summary-template.md) and are meant to be edited
+5. Save an offline snapshot --> `vmware-monitor summary --html` writes a self-contained HTML file (no external assets, nothing uploaded) to `~/vmware-health/cluster-health-<vc>-<timestamp>.html`; `--html-path <file>` for an explicit path. The timestamped filename means a folder of them becomes a browsable point-in-time history. It is a snapshot, not a live page — re-run to refresh
+6. **On a very large fleet** --> add `--no-vms` to skip the VM rollup pass when you only need host/alarm/capacity signals
+7. **If it returns zero clusters** --> the target may be a standalone ESXi host (no clusters); use `inventory hosts` + `health alarms` instead
+
 ### Daily Health Check
 
 **Judgment**: alarms tell you what vCenter has decided is wrong, events tell you what happened. They diverge — an event burst with no alarms often signals a metric threshold miscalibration, not "everything is fine." Read both.
@@ -143,7 +156,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | Cloud models (Claude, GPT-4o) | Either | MCP gives structured JSON I/O |
 | Automated pipelines | **MCP** | Type-safe parameters, structured output |
 
-## MCP Tools (22 — all read-only)
+## MCP Tools (23 — all read-only)
 
 | Tool | Description |
 |------|------------|
@@ -151,6 +164,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | `list_esxi_hosts` | ESXi hosts with CPU, memory, version, uptime |
 | `list_all_datastores` | Datastores with capacity, free space, type |
 | `list_all_clusters` | Clusters with host count, DRS/HA status |
+| `cluster_health_summary` | One-glance triage across all clusters — ranked `top_issues` focus list (top-N anomalies, worst first, with drill-down hints) + per-cluster rollup with opinionated `status` (ok/warn/critical). Params: `cluster_filter`, `include_vms`, `top_n`. Render as a table or HTML; see `references/health-summary-template.md` |
 | `list_all_networks` | Networks with attached VM count and accessibility |
 | `get_alarms` | All active/triggered alarms — includes `suggested_actions` remediation hints |
 | `get_events` | Recent events filtered by severity and time — includes `suggested_actions` hints |
@@ -177,6 +191,7 @@ history, so it never reports a fabricated "trend" or runway date.
 ## CLI Quick Reference
 
 ```bash
+vmware-monitor summary [--top 10] [--cluster <substr>] [--no-vms] [--html | --html-path <f>] [--target <t>]
 vmware-monitor inventory vms [--target <t>] [--limit 20] [--power-state poweredOn]
 vmware-monitor inventory hosts [--target <t>]
 vmware-monitor inventory datastores [--target <t>]

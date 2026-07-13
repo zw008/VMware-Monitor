@@ -1,3 +1,28 @@
+## v1.7.5 (2026-07-13) — cluster health triage: one-glance summary, top-N issues, offline HTML snapshots
+
+### Added
+- **`cluster_health_summary` MCP tool** (read-only; surface 22 → 23). One aggregated
+  read answers "is anything on fire?": three batched PropertyCollector passes roll
+  hosts, VM power state, live CPU/memory pressure, and triggered alarms up to the
+  owning cluster, assign an opinionated `status` (ok/warn/critical) with
+  plain-language `attention` reasons, and flatten the individual anomalies into a
+  ranked **`top_issues`** focus list (severity → kind → magnitude; capped by
+  `top_n`, default 10, with an honest pre-cap `issues_total`). Alarm names are
+  resolved in one extra batched call — no per-alarm round-trips (issue #31 class).
+  Born from the issue #31 triage discussion.
+- **`vmware-monitor summary` CLI** — `--top N`, `--cluster <substr>`, `--no-vms`,
+  and `--html` / `--html-path <file>`: renders the same data as an **offline,
+  self-contained HTML snapshot** (all CSS inlined, no external assets, light/dark
+  aware, every vSphere-sourced value HTML-escaped). Default location
+  `~/vmware-health/cluster-health-<vc>-<YYYYMMDD-HHMMSS>.html` — timestamped
+  filenames turn the folder into a browsable point-in-time history.
+- **Editable display template** `references/health-summary-template.md` — the
+  default columns/thresholds plus a worked "add a column" example; every rendered
+  view ends with a friendly customization hint.
+- Public render helpers (`render_summary_console`, `write_html_snapshot`) so
+  companion skills (vmware-aiops) can present the identical view without
+  duplicating code.
+
 ## v1.7.4 (2026-07-13) — host-check boundary reads batched (issue #31 tail)
 
 ### Fixed

@@ -19,6 +19,20 @@ vmware-monitor mcp-config list
 
 Generates MCP configuration files for supported agents. `list` shows all available agent templates.
 
+## Cluster Health Summary
+
+```bash
+vmware-monitor summary [--top <n>] [--cluster <substring>] [--no-vms] [--html] [--html-path <file>] [--target <name>]
+```
+
+- One aggregated read across all clusters. Leads with a ranked **top-N issues** focus list (the individual anomalies — disconnected hosts, triggered alarms, capacity/HA — worst first, each with a drill-down hint), then a per-cluster table: hosts connected/total, VM power rollup, live CPU/memory %, HA/DRS, alarm counts, and an opinionated `status` (ok/warn/critical) with `attention` reasons.
+- `--top`: size of the focus list (default 10; `--top 5` tighter, `--top 0` hides it and shows only the table). The header shows "Top N (of TOTAL)" when truncated.
+- `--cluster`: case-insensitive substring; show only matching clusters (also suppresses the standalone-hosts bucket).
+- `--no-vms`: skip the VM rollup pass (faster on very large fleets when only host/alarm/capacity signals are needed).
+- `--html`: write a self-contained, offline HTML snapshot (no external CSS/JS/fonts — nothing leaves the machine) to `~/vmware-health/cluster-health-<vc>-<YYYYMMDD-HHMMSS>.html`. The timestamped filename turns a folder of snapshots into a browsable point-in-time history. It is a snapshot, not a live page — re-run to refresh.
+- `--html-path <file>`: write the HTML snapshot to an explicit path instead of the auto-timestamped default (implies `--html`).
+- The rendered view is customizable — columns, thresholds, and layout live in [`health-summary-template.md`](health-summary-template.md). MCP tool: `cluster_health_summary`.
+
 ## Inventory
 
 ```bash

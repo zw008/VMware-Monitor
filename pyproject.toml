@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vmware-monitor"
-version = "1.7.4"
+version = "1.7.5"
 description = "VMware vCenter/ESXi read-only monitoring tool. No destructive operations — code-level enforced."
 readme = "README.md"
 license = "MIT"
@@ -42,6 +42,11 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# health_html.py embeds a CSS template as a string literal; those lines exceed
+# the 100-col limit by nature and cannot be reflowed without breaking the CSS.
+"vmware_monitor/ops/health_html.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

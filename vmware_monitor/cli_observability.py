@@ -14,6 +14,9 @@ mutation, clone, or migrate exists here or anywhere in vmware-monitor.
 
 from __future__ import annotations
 
+import re
+from datetime import datetime
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -377,6 +380,172 @@ def activity_sessions(
     console.print(table)
 
 
+# ─── summary (opinionated cross-cluster triage) ──────────────────────────────
+
+_STATUS_STYLE = {"critical": "red", "warn": "yellow", "ok": "green"}
+_SEV_STYLE = {"critical": "red", "warning": "yellow"}
+
+
+def _slug(text: str) -> str:
+    """Filesystem-safe slug from a target name (for the snapshot filename)."""
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", text).strip("-") or "vcenter"
+
+
+def write_html_snapshot(data: dict, vcenter: str, explicit_path: Path | None) -> None:
+    """Render the summary to a self-contained HTML file and report the path.
+
+    Default location is ~/vmware-health/cluster-health-<vc>-<YYYYMMDD-HHMMSS>.html
+    so a folder of snapshots becomes a browsable point-in-time history. The file
+    is fully offline (no external CSS/JS/fonts) — nothing leaves the machine.
+    """
+    from vmware_monitor.ops.health_html import render_cluster_health_html
+
+    now = datetime.now().astimezone()
+    if explicit_path is not None:
+        path = explicit_path.expanduser()
+    else:
+        ts = now.strftime("%Y%m%d-%H%M%S")
+        path = Path.home() / "vmware-health" / f"cluster-health-{_slug(vcenter)}-{ts}.html"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    document = render_cluster_health_html(data, vcenter, now, filename=path.name)
+    path.write_text(document, encoding="utf-8")
+    console.print(f"[green]Wrote cluster-health snapshot →[/] {path}")
+    console.print(f"[dim]Open it: open '{path}'  (offline file, nothing uploaded)[/]")
+
+
+def _render_top_issues(data: dict, top: int) -> None:
+    """Print the ranked top-N anomaly focus list (the large-fleet headline)."""
+    if top <= 0:
+        return
+    issues = data.get("top_issues", [])
+    total = data.get("issues_total", 0)
+    if not issues:
+        console.print("[green]No issues detected — every cluster is OK.[/]\n")
+        return
+    shown = len(issues)
+    title = f"Top {shown} issues" + (f" (of {total})" if total > shown else "")
+    tbl = Table(title=title)
+    tbl.add_column("#", justify="right", style="dim")
+    tbl.add_column("Severity")
+    tbl.add_column("Object", style="cyan")
+    tbl.add_column("Cluster")
+    tbl.add_column("Problem")
+    tbl.add_column("Next step", style="dim")
+    for n, i in enumerate(issues, 1):
+        sev = i["severity"]
+        tbl.add_row(
+            str(n),
+            f"[{_SEV_STYLE.get(sev, 'white')}]{sev.upper()}[/]",
+            i["object"],
+            i.get("cluster") or "—",
+            i["detail"],
+            i.get("drilldown", ""),
+        )
+    console.print(tbl)
+
+
+@cli_errors
+def cluster_summary_cmd(
+    cluster: Annotated[
+        str | None,
+        typer.Option("--cluster", help="Show only clusters matching this substring"),
+    ] = None,
+    no_vms: Annotated[
+        bool,
+        typer.Option("--no-vms", help="Skip the VM rollup pass (faster on huge fleets)"),
+    ] = False,
+    top: Annotated[
+        int,
+        typer.Option("--top", help="Size of the top-issues focus list (0 to hide)"),
+    ] = 10,
+    html: Annotated[
+        bool,
+        typer.Option(
+            "--html", help="Write an offline HTML snapshot to ~/vmware-health/ (timestamped)"
+        ),
+    ] = False,
+    html_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--html-path", help="Write the HTML snapshot to this exact path (implies --html)"
+        ),
+    ] = None,
+    target: TargetOption = None,
+    config: ConfigOption = None,
+) -> None:
+    """One-glance cluster health: is anything on fire?
+
+    Leads with the top-N individual anomalies (the focus list), then an
+    opinionated per-cluster table (Problems / Capacity / Health → one status).
+    Adjust it in references/health-summary-template.md, or just ask the assistant
+    to add or drop columns. Pass --html for an offline, shareable snapshot file
+    (timestamped filename so a folder of them becomes a browsable history).
+    """
+    from vmware_monitor.ops.cluster_summary import get_cluster_health_summary
+
+    si, _, tgt = get_connection(target, config)
+    data = get_cluster_health_summary(si, cluster_filter=cluster, include_vms=not no_vms, top_n=top)
+    audit.log_query(target=tgt, resource="clusters", query_type="cluster_health_summary")
+
+    if html or html_path is not None:
+        write_html_snapshot(data, tgt, html_path)
+        return
+
+    render_summary_console(data, top)
+
+
+def render_summary_console(data: dict, top: int) -> None:
+    """Render a cluster-health summary dict to the terminal (header + top-N + table).
+
+    Public so a companion skill (e.g. vmware-aiops, which delegates to this same
+    aggregation via the vmware-monitor library) can present an identical view
+    without duplicating the rendering.
+    """
+    t = data["totals"]
+    worst = t["worst_status"]
+    console.print(
+        f"[bold]Cluster health[/] — {t['clusters']} clusters, "
+        f"{t['hosts_connected']}/{t['hosts_total']} hosts connected"
+        + (f", {t.get('vms_on', 0)}/{t.get('vms_total', 0)} VMs on" if "vms_total" in t else "")
+        + f"  ·  overall: [{_STATUS_STYLE[worst]}]{worst.upper()}[/]"
+    )
+
+    _render_top_issues(data, top)
+
+    table = Table(title="Cluster Health Summary")
+    table.add_column("Status")
+    table.add_column("Cluster", style="cyan")
+    table.add_column("Hosts", justify="right")
+    if "vms_total" in t:
+        table.add_column("VMs on", justify="right")
+    table.add_column("CPU%", justify="right")
+    table.add_column("Mem%", justify="right")
+    table.add_column("HA")
+    table.add_column("DRS")
+    table.add_column("Alarms C/W", justify="right")
+    table.add_column("Attention")
+    for c in data["clusters"]:
+        style = _STATUS_STYLE.get(c["status"], "white")
+        row = [
+            f"[{style}]{c['status'].upper()}[/]",
+            c["name"],
+            f"{c['hosts_connected']}/{c['hosts_total']}",
+        ]
+        if "vms_total" in t:
+            row.append(f"{c.get('vms_on', 0)}/{c.get('vms_total', 0)}")
+        row += [
+            f"[{_pct_style(c['cpu_used_pct'])}]{c['cpu_used_pct']}[/]",
+            f"[{_pct_style(c['mem_used_pct'])}]{c['mem_used_pct']}[/]",
+            "[green]ON[/]" if c["ha_enabled"] else "[red]OFF[/]",
+            "[green]ON[/]" if c["drs_enabled"] else "[dim]off[/]",
+            f"{c['alarms']['critical']}/{c['alarms']['warning']}",
+            "; ".join(c["attention"]) or "[dim]—[/]",
+        ]
+        table.add_row(*row)
+    console.print(table)
+    console.print(f"[dim]{data['customization_hint']}[/]")
+
+
 def register(app: typer.Typer) -> None:
     """Attach all observability sub-apps to the root CLI."""
     app.add_typer(perf_app, name="perf")
@@ -384,3 +553,4 @@ def register(app: typer.Typer) -> None:
     app.add_typer(infra_app, name="infra")
     app.add_typer(snapshots_app, name="snapshots")
     app.add_typer(activity_app, name="activity")
+    app.command("summary")(cluster_summary_cmd)

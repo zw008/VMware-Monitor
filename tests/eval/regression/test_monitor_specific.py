@@ -85,7 +85,11 @@ def test_mcp_exposes_snapshot_listing() -> None:
         # v1.7.3: host syslog error scan surfaced as an MCP tool (was
         # scanner/CLI-only); requested by juanpf-ha on issue #31.
         "host_log_scan",
+        # issue #31 follow-up: opinionated cross-cluster triage rollup — the
+        # "is anything on fire?" glance juanpf-ha asked for (aggregation in the
+        # tool, model just renders; not an Aria replacement).
+        "cluster_health_summary",
     }
     missing = expected_new - tools
     assert not missing, f"observability tools missing from MCP: {sorted(missing)}"
-    assert len(tools) == 22, f"expected 22 MCP tools, got {len(tools)}: {sorted(tools)}"
+    assert len(tools) == 23, f"expected 23 MCP tools, got {len(tools)}: {sorted(tools)}"

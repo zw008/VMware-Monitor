@@ -45,6 +45,7 @@ from vmware_monitor.ops.capacity import (
     get_datastore_capacity,
     get_resource_pool_usage,
 )
+from vmware_monitor.ops.cluster_summary import get_cluster_health_summary
 from vmware_monitor.ops.infra_health import (
     get_certificate_status,
     get_license_status,
@@ -267,6 +268,55 @@ def list_all_clusters(
     if limit is not None:
         results = results[:limit]
     return results
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def cluster_health_summary(
+    target: Optional[str] = None,
+    cluster_filter: Optional[str] = None,
+    include_vms: bool = True,
+    top_n: int = 10,
+) -> dict:
+    """[READ] One-glance health rollup for every cluster — "is anything on fire?".
+
+    Aggregates hosts, VM power state, live CPU/memory pressure, and triggered
+    alarms per cluster in three batched server-side passes (not one call per
+    object), assigns each cluster an opinionated status ("ok"/"warn"/"critical"),
+    AND flattens the individual anomalies into a ranked ``top_issues`` focus list
+    — the headline for large environments where scanning every cluster row is too
+    slow. Use this FIRST for a cross-cluster triage view instead of stitching
+    list_all_clusters + list_esxi_hosts + get_alarms yourself; then drill into
+    those tools for detail on whatever ``top_issues`` points at.
+
+    Returns {totals, top_issues, issues_total, clusters, snapshot,
+    customization_hint}. Lead with ``top_issues`` (the top N things wrong right
+    now, worst first), show the ``clusters`` table as context, and always echo
+    ``customization_hint`` as the closing line. ``issues_total`` reveals how many
+    anomalies existed before the top_n cap. Point-in-time snapshot — no trending.
+
+    Args:
+        target: Optional vCenter/ESXi target name from config. Uses default if omitted.
+        cluster_filter: Case-insensitive substring to show only matching clusters
+            (None = all clusters plus a standalone-hosts row).
+        include_vms: Roll up VM total/powered-on counts (default True). Set False
+            to skip the VM inventory pass on very large fleets when you only need
+            host/alarm/capacity signals.
+        top_n: Cap the top_issues focus list at this many entries (default 10).
+            Use 5 for an even tighter view, or 0 to omit the list.
+    """
+    si = _get_connection(target)
+    return get_cluster_health_summary(
+        si, cluster_filter=cluster_filter, include_vms=include_vms, top_n=top_n
+    )
 
 
 @mcp.tool(

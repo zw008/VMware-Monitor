@@ -18,10 +18,39 @@ Each operation is classified by autonomy level per the Enterprise Harness Engine
 - All tools are safe for agents to call without confirmation — the skill is code-level read-only.
 - Test file `test_no_destructive_operations.py` enforces this invariant on every commit.
 
+## 0. Cluster Health Summary (triage)
+
+CLI `summary`, MCP `cluster_health_summary`. One aggregated read for a fast
+cross-cluster "is anything on fire?" glance — the operator's first look, not an
+Aria Operations replacement.
+
+| Aspect | Detail |
+|--------|--------|
+| Passes | 3 batched `RetrievePropertiesEx` calls (clusters, hosts, VMs) — never one per object (issue #31 class) |
+| Focus list | `top_issues`: individual anomalies (disconnected hosts, triggered alarms, capacity/HA) flattened + ranked worst-first, capped at `top_n`; `issues_total` reports pre-cap count. Alarm names resolved in one batched call (no N+1) |
+| Rollup | Per cluster: hosts connected/total, VM power, live CPU/mem %, HA/DRS, alarm counts (cluster + host) |
+| Status | Opinionated `ok` / `warn` / `critical` + plain-language `attention` reasons; sorted worst-first |
+| Thresholds | `CPU_MEM_WARN_PCT=85`, `CPU_MEM_CRIT_PCT=95` (named constants in `ops/cluster_summary.py`); disconnected host or critical alarm forces `critical` |
+| Customizable | Columns/thresholds/layout in [`health-summary-template.md`](health-summary-template.md); response carries a `customization_hint` |
+
+### `cluster_health_summary` — input parameters
+
+| Parameter | Type | Default | Behavior |
+|-----------|------|---------|----------|
+| `target` | str (optional) | default target | Named vCenter/ESXi target |
+| `cluster_filter` | str (optional) | None (all) | Case-insensitive substring; suppresses standalone-hosts bucket |
+| `include_vms` | bool | True | Roll up VM power counts; False skips the VM pass (faster on huge fleets) |
+| `top_n` | int | 10 | Cap the `top_issues` focus list; `issues_total` keeps the pre-cap count; 0 hides the list |
+
+**Typical response tokens**: ~120–400 (one compact row per cluster + totals);
+scales with cluster count, not VM count. This is the aggregation-in-the-tool
+pattern — the model never sees raw inventory.
+
 ## 1. Inventory
 
 | Feature | vCenter | ESXi | Details |
 |---------|:-------:|:----:|---------|
+| Cluster health summary | Y | N | Cross-cluster triage rollup with opinionated status — CLI `summary`, MCP `cluster_health_summary` |
 | List VMs | Y | Y | Name, power state, CPU, memory, guest OS, IP, `folder_path` (vCenter inventory folder, e.g. `/Datacenters/Production/Web Tier`) |
 | List Hosts | Y | Self only | CPU cores, memory, ESXi version, VM count, uptime |
 | List Datastores | Y | Y | Capacity, free/used, type (VMFS/NFS), usage % |
