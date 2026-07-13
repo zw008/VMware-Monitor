@@ -50,20 +50,32 @@ def test_get_host_services_filters_by_host_name() -> None:
 
     from vmware_monitor.ops.health import get_host_services
 
-    def _collected_host(name: str, svc_key: str) -> tuple:
+    def _svc_info(svc_key: str) -> MagicMock:
         svc = MagicMock()
         svc.key = svc_key
         svc.label = svc_key.upper()
         svc.running = True
         svc.policy = "on"
-        svc_system = MagicMock()
-        svc_system.serviceInfo.service = [svc]
-        # get_host_services now batches name + configManager.serviceSystem via
-        # PropertyCollector; serviceInfo remains a read on the returned ref.
-        return (MagicMock(), {"name": name, "configManager.serviceSystem": svc_system})
+        info = MagicMock()
+        info.service = [svc]
+        return info
 
-    collected = [_collected_host("esxi-1", "TSM-SSH"), _collected_host("esxi-2", "ntpd")]
-    with patch("vmware_monitor.ops.health._collect", return_value=collected):
+    # get_host_services now batches in two passes: pass 1 collects the
+    # serviceSystem ref per host, pass 2 (_collect_objects) batches serviceInfo
+    # for all refs. Both are patched here.
+    ss1, ss2 = MagicMock(name="ss-esxi-1"), MagicMock(name="ss-esxi-2")
+    collected = [
+        (MagicMock(), {"name": "esxi-1", "configManager.serviceSystem": ss1}),
+        (MagicMock(), {"name": "esxi-2", "configManager.serviceSystem": ss2}),
+    ]
+    boundary = [
+        (ss1, {"serviceInfo": _svc_info("TSM-SSH")}),
+        (ss2, {"serviceInfo": _svc_info("ntpd")}),
+    ]
+    with (
+        patch("vmware_monitor.ops.health._collect", return_value=collected),
+        patch("vmware_monitor.ops.health._collect_objects", return_value=boundary),
+    ):
         rows = get_host_services(MagicMock(), host_name="esxi-2")
     assert [r["host"] for r in rows] == ["esxi-2"]
     assert rows[0]["service"] == "ntpd"

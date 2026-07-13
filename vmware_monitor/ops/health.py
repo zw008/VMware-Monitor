@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from pyVmomi import vim, vmodl
 from vmware_policy import sanitize
 
-from vmware_monitor.ops._collect import _collect
+from vmware_monitor.ops._collect import _collect, _collect_objects
 
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
@@ -254,12 +254,13 @@ def get_host_hardware_status(si: ServiceInstance) -> list[dict]:
 
 def get_host_services(si: ServiceInstance, host_name: str | None = None) -> list[dict]:
     """Get service status for hosts."""
-    # Batch name + the serviceSystem reference for every host in one
-    # PropertyCollector call (issue #31 class): the per-host name/configManager
-    # lazy chain is eliminated. serviceInfo itself lives on the HostServiceSystem
-    # managed object, which cannot be crossed by a HostSystem container view, so
-    # that one read remains per matched host.
+    # Pass 1: batch name + the serviceSystem reference for every host in one
+    # PropertyCollector call (issue #31 class). serviceInfo itself lives on the
+    # HostServiceSystem managed object, which a HostSystem container view cannot
+    # cross.
     results = []
+    hosts: list[tuple[str, object]] = []
+    svc_refs: list[object] = []
     for _obj, p in _collect(si, [vim.HostSystem], ["name", "configManager.serviceSystem"]):
         name = p.get("name", "")
         if host_name and name != host_name:
@@ -267,7 +268,21 @@ def get_host_services(si: ServiceInstance, host_name: str | None = None) -> list
         svc_system = p.get("configManager.serviceSystem")
         if not svc_system:
             continue
-        for svc in svc_system.serviceInfo.service:
+        hosts.append((name, svc_system))
+        svc_refs.append(svc_system)
+    # Pass 2: batch serviceInfo for every serviceSystem ref in ONE more call,
+    # instead of one lazy read per matched host.
+    info_by_ref = {
+        ref: props.get("serviceInfo")
+        for ref, props in _collect_objects(
+            si, svc_refs, vim.HostServiceSystem, ["serviceInfo"]
+        )
+    }
+    for name, svc_system in hosts:
+        svc_info = info_by_ref.get(svc_system)
+        if not svc_info:
+            continue
+        for svc in svc_info.service:
             results.append({
                 "host": sanitize(name),
                 "service": svc.key,

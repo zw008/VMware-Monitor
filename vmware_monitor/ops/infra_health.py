@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from pyVmomi import vim
 from vmware_policy import sanitize
 
-from vmware_monitor.ops._collect import _collect
+from vmware_monitor.ops._collect import _collect, _collect_objects
 
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
@@ -58,18 +58,32 @@ def get_certificate_status(
     """
     now = datetime.now(tz=timezone.utc)
     results: list[dict] = []
-    # Batch name + the certificateManager reference for every host in one
+    # Pass 1: batch name + the certificateManager reference for every host in one
     # PropertyCollector call (issue #31 class). certificateInfo lives on the
     # HostCertificateManager managed object, which a HostSystem container view
-    # cannot cross, so that one read remains per host.
+    # cannot cross.
+    hosts: list[tuple[str, object]] = []
+    cert_refs: list[object] = []
     for _obj, p in _collect(si, [vim.HostSystem], ["name", "configManager.certificateManager"]):
         cert_mgr = p.get("configManager.certificateManager")
-        info = getattr(cert_mgr, "certificateInfo", None) if cert_mgr else None
+        hosts.append((p.get("name", ""), cert_mgr))
+        if cert_mgr:
+            cert_refs.append(cert_mgr)
+    # Pass 2: batch certificateInfo for every certificateManager ref in ONE more
+    # call, instead of one lazy read per host.
+    info_by_ref = {
+        ref: props.get("certificateInfo")
+        for ref, props in _collect_objects(
+            si, cert_refs, vim.HostCertificateManager, ["certificateInfo"]
+        )
+    }
+    for name, cert_mgr in hosts:
+        info = info_by_ref.get(cert_mgr) if cert_mgr else None
         not_after = getattr(info, "notAfter", None) if info else None
         days = _days_until(not_after, now)
         results.append(
             {
-                "host": sanitize(p.get("name", "")),
+                "host": sanitize(name),
                 "not_after": str(not_after) if not_after else "unknown",
                 "days_until_expiry": days,
                 "expiring": bool(days is not None and days <= warn_days),
@@ -123,24 +137,39 @@ def get_ntp_status(
         host_name: Filter to a single host by exact name (None = all hosts).
     """
     results: list[dict] = []
-    # Batch name + dateTimeInfo + the serviceSystem reference for every host in
-    # one PropertyCollector call (issue #31 class). Fetching config.dateTimeInfo
-    # as a narrow path avoids pulling the whole (large) host config; serviceInfo
-    # remains one read per matched host (managed-object boundary).
+    # Pass 1: batch name + dateTimeInfo + the serviceSystem reference for every
+    # host in one PropertyCollector call (issue #31 class). Fetching
+    # config.dateTimeInfo as a narrow path avoids pulling the whole (large) host
+    # config; serviceInfo lives on the HostServiceSystem managed object, which a
+    # HostSystem container view cannot cross.
     ntp_props = ["name", "config.dateTimeInfo", "configManager.serviceSystem"]
+    hosts: list[tuple[str, object, object]] = []
+    svc_refs: list[object] = []
     for _obj, p in _collect(si, [vim.HostSystem], ntp_props):
         name = p.get("name", "")
         if host_name and name != host_name:
             continue
-        dt_info = p.get("config.dateTimeInfo")
+        svc_system = p.get("configManager.serviceSystem")
+        hosts.append((name, p.get("config.dateTimeInfo"), svc_system))
+        if svc_system:
+            svc_refs.append(svc_system)
+    # Pass 2: batch serviceInfo for every serviceSystem ref in ONE more call,
+    # instead of one lazy read per matched host.
+    info_by_ref = {
+        ref: props.get("serviceInfo")
+        for ref, props in _collect_objects(
+            si, svc_refs, vim.HostServiceSystem, ["serviceInfo"]
+        )
+    }
+    for name, dt_info, svc_system in hosts:
         ntp_cfg = getattr(dt_info, "ntpConfig", None) if dt_info else None
         servers = list(getattr(ntp_cfg, "server", []) or []) if ntp_cfg else []
 
         running = False
         policy = "unknown"
-        svc_system = p.get("configManager.serviceSystem")
-        if svc_system and svc_system.serviceInfo:
-            for svc in svc_system.serviceInfo.service:
+        svc_info = info_by_ref.get(svc_system) if svc_system else None
+        if svc_info:
+            for svc in svc_info.service:
                 if svc.key == "ntpd":
                     running = svc.running
                     policy = svc.policy

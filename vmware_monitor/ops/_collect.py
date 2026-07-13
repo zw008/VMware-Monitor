@@ -84,3 +84,62 @@ def _collect(
         return results
     finally:
         view.Destroy()
+
+
+def _collect_objects(
+    si: ServiceInstance, objs: list, obj_type, paths: list[str]
+) -> list[tuple[object, dict]]:
+    """Batch-retrieve ``paths`` for a known list of managed objects in one call.
+
+    ``_collect`` sweeps a whole container view, but some properties live on a
+    *different* managed object reachable only by reference from the swept object
+    (e.g. ``HostServiceSystem.serviceInfo`` or ``HostCertificateManager.
+    certificateInfo``, referenced from ``HostSystem.configManager``). A container
+    view over ``HostSystem`` cannot cross that boundary, so the naive code reads
+    ``ref.serviceInfo`` once per host — one lazy SOAP round-trip per host, the
+    same issue #31 class problem, just one hop removed.
+
+    This helper collapses those N per-host reads into a single
+    ``RetrievePropertiesEx`` by building one ``ObjectSpec`` per already-known
+    reference (no traversal, no container view). Callers collect the references
+    in their first batched pass, then fetch the boundary property for all of
+    them here in a second batched pass.
+
+    Args:
+        si: vSphere ServiceInstance.
+        objs: Already-known managed objects (references) to fetch ``paths`` for.
+            Duplicates are de-duplicated. An empty list yields ``[]`` with no
+            server call.
+        obj_type: The managed-object type of every entry in ``objs``, e.g.
+            ``vim.HostServiceSystem``.
+        paths: Property paths to fetch, e.g. ``["serviceInfo"]``.
+
+    Returns:
+        List of ``(managed_object, {path: value})`` tuples in server order.
+    """
+    unique = list(dict.fromkeys(objs))
+    if not unique:
+        return []
+    content = si.RetrieveContent()
+    object_set = [
+        vmodl.query.PropertyCollector.ObjectSpec(obj=o, skip=False) for o in unique
+    ]
+    prop_spec = vmodl.query.PropertyCollector.PropertySpec(
+        type=obj_type, pathSet=list(paths), all=False
+    )
+    filter_spec = vmodl.query.PropertyCollector.FilterSpec(
+        objectSet=object_set, propSet=[prop_spec]
+    )
+    options = vmodl.query.PropertyCollector.RetrieveOptions(maxObjects=_PC_PAGE_SIZE)
+    pc = content.propertyCollector
+    results: list[tuple[object, dict]] = []
+    batch = pc.RetrievePropertiesEx([filter_spec], options)
+    while batch is not None:
+        for obj_content in batch.objects:
+            props = {p.name: p.val for p in (obj_content.propSet or [])}
+            results.append((obj_content.obj, props))
+        token = getattr(batch, "token", None)
+        if not token:
+            break
+        batch = pc.ContinueRetrievePropertiesEx(token)
+    return results

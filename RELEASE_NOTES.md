@@ -1,3 +1,17 @@
+## v1.7.4 (2026-07-13) — host-check boundary reads batched (issue #31 tail)
+
+### Fixed
+- **NTP / services / certificate checks at scale.** `get_ntp_status`,
+  `get_host_services`, and `get_certificate_status` already batched each host's
+  name + `configManager` reference in one PropertyCollector call, but then read
+  the property they actually needed — `serviceInfo` / `certificateInfo`, which
+  lives on the referenced `HostServiceSystem` / `HostCertificateManager` managed
+  object that a `HostSystem` container view cannot cross — lazily, i.e. one extra
+  SOAP round-trip per host (the issue #31 class, one hop removed). A new
+  `ops/_collect._collect_objects` helper fetches the boundary property for every
+  reference in a single second `RetrievePropertiesEx`, collapsing the per-host N
+  into 2 calls total. Output shape unchanged.
+
 ## v1.7.3 (2026-07-03) — host_log_scan MCP tool
 
 ### Added
