@@ -68,6 +68,24 @@ class ConnectionManager:
         """List all configured target names."""
         return [t.name for t in self._config.targets]
 
+    def connect_all(self) -> tuple[list[tuple[str, ServiceInstance]], list[tuple[str, str]]]:
+        """Connect to every configured target, tolerating per-target failures.
+
+        Returns ``(sessions, unreachable)`` where ``sessions`` is ``[(name, si)]``
+        for targets that connected and ``unreachable`` is ``[(name, reason)]`` for
+        those that did not — so a cross-vCenter view degrades gracefully (one dead
+        vCenter never sinks the whole roll-up) instead of failing wholesale. The
+        reason is class-name only, so no host:port or credential detail leaks.
+        """
+        sessions: list[tuple[str, ServiceInstance]] = []
+        unreachable: list[tuple[str, str]] = []
+        for name in self.list_targets():
+            try:
+                sessions.append((name, self.connect(name)))
+            except Exception as e:  # noqa: BLE001 — any connect failure degrades to "unreachable"
+                unreachable.append((name, type(e).__name__))
+        return sessions, unreachable
+
     def list_connected(self) -> list[str]:
         """List currently connected target names."""
         return list(self._connections.keys())

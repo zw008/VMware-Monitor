@@ -84,3 +84,17 @@ def get_connection(target: str | None, config_path: Path | None = None):
     mgr = ConnectionManager(cfg)
     target_name = target or cfg.default_target.name
     return mgr.connect(target), cfg, target_name
+
+
+def get_all_connections(config_path: Path | None = None):
+    """Connect to every configured target, tolerating per-target failures.
+
+    Returns ``(sessions, unreachable)`` — see ``ConnectionManager.connect_all`` —
+    for the cross-vCenter attention view. One dead vCenter never fails the whole
+    command; it is reported under ``unreachable`` instead.
+    """
+    from vmware_monitor.config import load_config
+    from vmware_monitor.connection import ConnectionManager
+
+    cfg = load_config(config_path)
+    return ConnectionManager(cfg).connect_all()

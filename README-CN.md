@@ -6,7 +6,7 @@
 
 [English](README.md) | 中文
 
-**只读** VMware vCenter/ESXi 监控 — 11 个工具，代码级安全保障。代码库中不存在任何破坏性操作。
+**只读** VMware vCenter/ESXi 监控 — 27 个工具，代码级安全保障。代码库中不存在任何破坏性操作。
 
 > **为什么独立仓库？** VMware Monitor 完全独立于 [VMware-AIops](https://github.com/zw008/VMware-AIops)。安全性在**代码级别**保障：代码库中不存在关机、删除、创建、调整配置、快照创建/恢复/删除、克隆、迁移等函数。不仅仅是提示词约束 — 而是零破坏性代码路径。
 
@@ -25,6 +25,28 @@
 | **[vmware-nsx](https://github.com/zw008/VMware-NSX)** | NSX 网络：段、网关、NAT、IPAM | 31 | `uv tool install vmware-nsx-mgmt` |
 | **[vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security)** | DFW 微分段、安全组、Traceflow | 20 | `uv tool install vmware-nsx-security` |
 | **[vmware-aria](https://github.com/zw008/VMware-Aria)** | Aria Ops 指标、告警、容量规划 | 18 | `uv tool install vmware-aria` |
+
+## ⚡ 快速调查报告
+
+五个有主见的只读报告，直接回答运维最关心的问题——每个都在**服务端聚合并关联**数据，返回高信号结果（绝不把 raw inventory 灌给模型）。每个报告都支持 `--html` 生成**自包含离线 HTML 快照**（零外链、内网主机名不外泄；下钻细节用原生 `<details>` 折叠，零 JavaScript）。
+
+| 问题 | 命令 | 关联什么 |
+|------|------|---------|
+| **"有什么着火了？"**（全集群） | `vmware-monitor summary` | 每个集群的主机 + VM 电源 + 实时 CPU/内存 + 告警 → Top-N 异常榜 + 每集群状态 |
+| **"现在该关注什么？"**（全 vCenter） | `vmware-monitor attention` | 所有 vCenter 合并成一个全局排序的异常榜；连不上的目标优雅降级 |
+| **"这个 VM 周围在发生什么？"** | `vmware-monitor investigate vm <名>` | VM 状态 + 所在主机 + 集群 + 背后数据存储 + 快照 + 告警 + 性能 + 合并事件时间线 |
+| **"这个主机周围在发生什么？"** | `vmware-monitor investigate host <名>` | 主机状态 + 集群 + 其上的 VM + 挂载的数据存储 + 告警 + 性能 + 关联时间线 |
+| **"这个数据存储周围在发生什么？"** | `vmware-monitor investigate datastore <名>` | 容量/剩余 + 挂载它的主机 + 落在其上的 VM + 告警 + 关联时间线 |
+
+```bash
+# 先总览，再下钻到它指出的对象：
+vmware-monitor attention                          # 现在该关注什么，全 vCenter
+vmware-monitor summary --top 5                    # 有什么着火了，单 vCenter
+vmware-monitor investigate vm web-01 --hours 72   # 一个 VM 的全貌，72 小时事件窗口
+vmware-monitor investigate vm web-01 --html       # → 离线快照写入 ~/vmware-health/
+```
+
+对象名不存在时返回**教学性错误**，明确告诉你如何列出对象。MCP 下对应工具为 `cluster_health_summary`、`cross_vcenter_attention`、`vm_investigation_bundle`、`host_investigation_bundle`、`datastore_investigation_bundle`——模型调用后用运维语言解释聚合结果。完整参数见 [`references/cli-reference.md`](skills/vmware-monitor/references/cli-reference.md)。
 
 ### 快速安装（推荐）
 

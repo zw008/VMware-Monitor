@@ -1,3 +1,34 @@
+## v1.7.6 (2026-07-14) — object-centered investigation bundles + cross-vCenter attention
+
+Extends the issue #31 triage work from "is anything on fire?" to "what is happening
+around *this* object?" — the object-centered drill-down juanpf-ha asked for.
+
+### Added
+- **Object investigation bundles** (read-only; surface 23 → 27). Three new MCP tools —
+  `vm_investigation_bundle`, `host_investigation_bundle`, `datastore_investigation_bundle`
+  — each answers "what is happening around this object?" in ONE call that *correlates*
+  the object with its surrounding infrastructure and recent history: state, the
+  host/cluster/datastores around it, snapshots, alarms (across every related scope),
+  live performance, and a merged, newest-first **event timeline** stitched from the
+  object AND its host/cluster/datastores via per-entity `EventFilterSpec.ByEntity`
+  queries. Aggregation happens in the tool — the model explains a high-signal result,
+  never raw inventory. All cross-object reads are batched (no per-object round-trips,
+  issue #31 class).
+- **`cross_vcenter_attention` MCP tool** — "what needs attention now?" across EVERY
+  configured vCenter, merged into one globally-ranked `top_issues` list (each tagged
+  with its `vcenter`) plus a per-target rollup. Degrades gracefully: an unreachable
+  target is listed under `unreachable` with a reason and the rest still aggregate.
+- **CLI**: `vmware-monitor investigate vm|host|datastore <name>` and
+  `vmware-monitor attention`, each with `--hours` and `--html` / `--html-path`. The
+  `--html` snapshot is self-contained and offline (no external assets), with drill-down
+  detail in native `<details>` sections — collapse/expand with zero JavaScript.
+
+### Changed
+- Extracted the shared offline-HTML palette into `ops/_html_base.py` so the
+  cluster-health, investigation, and attention renderers stay visually identical.
+
+### Notes
+- Point-in-time snapshots — no trend is invented. Strictly read-only.
 ## v1.7.5 (2026-07-13) — cluster health triage: one-glance summary, top-N issues, offline HTML snapshots
 
 ### Added

@@ -7,7 +7,7 @@
 
 English | [中文](README-CN.md)
 
-**Read-only** VMware vCenter/ESXi monitoring — 11 tools, code-level safety. No destructive operations exist in this codebase.
+**Read-only** VMware vCenter/ESXi monitoring — 27 tools, code-level safety. No destructive operations exist in this codebase.
 
 > **Why a separate repository?** VMware Monitor is fully independent from [VMware-AIops](https://github.com/zw008/VMware-AIops). Safety is enforced at the **code level**: no power off, delete, create, reconfigure, snapshot-create/revert/delete, clone, or migrate functions exist in this codebase. Not just prompt constraints — zero destructive code paths.
 
@@ -26,6 +26,28 @@ English | [中文](README-CN.md)
 | **[vmware-nsx](https://github.com/zw008/VMware-NSX)** | NSX networking: segments, gateways, NAT, IPAM | 31 | `uv tool install vmware-nsx-mgmt` |
 | **[vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security)** | DFW microsegmentation, security groups, Traceflow | 20 | `uv tool install vmware-nsx-security` |
 | **[vmware-aria](https://github.com/zw008/VMware-Aria)** | Aria Ops metrics, alerts, capacity planning | 18 | `uv tool install vmware-aria` |
+
+## ⚡ Quick Investigation Reports
+
+Five opinionated, read-only reports that answer an operator's real questions — each **aggregates and correlates server-side** and hands back a high-signal result (never raw inventory). Every report also renders a **self-contained offline HTML snapshot** with `--html` (no external assets, nothing leaves the machine; drill-down detail collapses in native `<details>` sections, zero JavaScript).
+
+| Question | Command | What it correlates |
+|----------|---------|--------------------|
+| **"Is anything on fire?"** across all clusters | `vmware-monitor summary` | Every cluster's hosts + VM power + live CPU/mem + alarms → ranked top-N issues + per-cluster status |
+| **"What needs attention now?"** across all vCenters | `vmware-monitor attention` | Every configured vCenter merged into one globally-ranked issue list; unreachable targets degrade gracefully |
+| **"What's happening around this VM?"** | `vmware-monitor investigate vm <name>` | VM state + host it runs on + cluster + backing datastores + snapshots + alarms + performance + a merged event timeline |
+| **"What's happening around this host?"** | `vmware-monitor investigate host <name>` | Host state + cluster + the VMs it runs + mounted datastores + alarms + performance + correlated timeline |
+| **"What's happening around this datastore?"** | `vmware-monitor investigate datastore <name>` | Capacity/free + mounting hosts + VMs it backs + alarms + correlated timeline |
+
+```bash
+# Triage the estate, then drill into whatever it flags:
+vmware-monitor attention                         # what needs attention now, all vCenters
+vmware-monitor summary --top 5                   # is anything on fire, one vCenter
+vmware-monitor investigate vm web-01 --hours 72  # everything around a VM, 72h event window
+vmware-monitor investigate vm web-01 --html      # → offline snapshot in ~/vmware-health/
+```
+
+Unknown object names return a **teaching error** naming exactly how to list objects. Via MCP these are the tools `cluster_health_summary`, `cross_vcenter_attention`, `vm_investigation_bundle`, `host_investigation_bundle`, `datastore_investigation_bundle` — the model calls them and explains the aggregated result in operational language. Full flags: [`references/cli-reference.md`](skills/vmware-monitor/references/cli-reference.md).
 
 ### Quick Install (Recommended)
 
@@ -184,11 +206,14 @@ For these operations, use the full [VMware-AIops](https://github.com/zw008/VMwar
 2. Review recent events: `vmware-monitor health events --hours 24 --severity warning`
 3. List hosts: `vmware-monitor inventory hosts` — check connection state and memory usage
 
-### Investigate a Specific VM
+### Investigate a Specific Object (drill-down)
 
-1. Find the VM: `vmware-monitor inventory vms --power-state poweredOff`
-2. Get details: `vmware-monitor vm info problem-vm`
-3. Check related events: `vmware-monitor health events --hours 48`
+One call correlates the object with its surrounding infrastructure and recent history — see [⚡ Quick Investigation Reports](#-quick-investigation-reports) above.
+
+1. Start from triage: `vmware-monitor attention` (all vCenters) or `vmware-monitor summary` (one)
+2. Drill into what it flags: `vmware-monitor investigate vm <name>` (or `host` / `datastore`)
+3. Widen the event window with `--hours 72`; share it with `--html` (offline snapshot)
+4. **If the name is unknown** → the teaching error names how to list objects (`inventory vms/hosts`, `list_all_datastores`)
 
 ### Set Up Continuous Monitoring
 

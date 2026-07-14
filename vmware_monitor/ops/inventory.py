@@ -55,8 +55,16 @@ def folder_path(managed_entity) -> str:
 _VM_SORT_KEYS = {"name", "cpu", "memory_mb", "power_state", "folder_path"}
 _COMPACT_FIELDS = ("name", "power_state", "cpu", "memory_mb", "folder_path")
 _VM_VALID_FIELDS = {
-    "name", "power_state", "cpu", "memory_mb", "guest_os",
-    "ip_address", "host", "uuid", "tools_status", "folder_path",
+    "name",
+    "power_state",
+    "cpu",
+    "memory_mb",
+    "guest_os",
+    "ip_address",
+    "host",
+    "uuid",
+    "tools_status",
+    "folder_path",
 }
 _VM_PROPS = [
     "name",
@@ -255,18 +263,20 @@ def list_hosts(si: ServiceInstance) -> list[dict]:
     results = []
     for _obj, p in _collect(si, [vim.HostSystem], _HOST_PROPS):
         mem = p.get("hardware.memorySize")
-        results.append({
-            "name": p.get("name", ""),
-            "connection_state": str(p.get("runtime.connectionState", "N/A")),
-            "power_state": str(p.get("runtime.powerState", "N/A")),
-            "cpu_cores": p.get("hardware.cpuInfo.numCpuCores") or 0,
-            "cpu_threads": p.get("hardware.cpuInfo.numCpuThreads") or 0,
-            "memory_gb": round(mem / (1024**3)) if mem else 0,
-            "esxi_version": p.get("config.product.version") or "N/A",
-            "esxi_build": p.get("config.product.build") or "N/A",
-            "vm_count": len(p.get("vm") or []),
-            "uptime_seconds": p.get("summary.quickStats.uptime") or 0,
-        })
+        results.append(
+            {
+                "name": p.get("name", ""),
+                "connection_state": str(p.get("runtime.connectionState", "N/A")),
+                "power_state": str(p.get("runtime.powerState", "N/A")),
+                "cpu_cores": p.get("hardware.cpuInfo.numCpuCores") or 0,
+                "cpu_threads": p.get("hardware.cpuInfo.numCpuThreads") or 0,
+                "memory_gb": round(mem / (1024**3)) if mem else 0,
+                "esxi_version": p.get("config.product.version") or "N/A",
+                "esxi_build": p.get("config.product.build") or "N/A",
+                "vm_count": len(p.get("vm") or []),
+                "uptime_seconds": p.get("summary.quickStats.uptime") or 0,
+            }
+        )
     return sorted(results, key=lambda x: x["name"])
 
 
@@ -276,15 +286,17 @@ def list_datastores(si: ServiceInstance) -> list[dict]:
     for _obj, p in _collect(si, [vim.Datastore], _DS_PROPS):
         free = p.get("summary.freeSpace")
         cap = p.get("summary.capacity")
-        results.append({
-            "name": p.get("name", ""),
-            "type": p.get("summary.type"),
-            "free_gb": round(free / (1024**3), 1) if free else 0,
-            "total_gb": round(cap / (1024**3), 1) if cap else 0,
-            "accessible": p.get("summary.accessible"),
-            "url": p.get("summary.url"),
-            "vm_count": len(p.get("vm") or []),
-        })
+        results.append(
+            {
+                "name": p.get("name", ""),
+                "type": p.get("summary.type"),
+                "free_gb": round(free / (1024**3), 1) if free else 0,
+                "total_gb": round(cap / (1024**3), 1) if cap else 0,
+                "accessible": p.get("summary.accessible"),
+                "url": p.get("summary.url"),
+                "vm_count": len(p.get("vm") or []),
+            }
+        )
     return sorted(results, key=lambda x: x["name"])
 
 
@@ -294,15 +306,17 @@ def list_clusters(si: ServiceInstance) -> list[dict]:
     for _obj, p in _collect(si, [vim.ClusterComputeResource], _CLUSTER_PROPS):
         total_mem = p.get("summary.totalMemory")
         drs_behavior = p.get("configuration.drsConfig.defaultVmBehavior")
-        results.append({
-            "name": p.get("name", ""),
-            "host_count": len(p.get("host") or []),
-            "drs_enabled": bool(p.get("configuration.drsConfig.enabled")),
-            "drs_behavior": str(drs_behavior) if drs_behavior else "N/A",
-            "ha_enabled": bool(p.get("configuration.dasConfig.enabled")),
-            "total_cpu_mhz": p.get("summary.totalCpu") or 0,
-            "total_memory_gb": round(total_mem / (1024**3)) if total_mem else 0,
-        })
+        results.append(
+            {
+                "name": p.get("name", ""),
+                "host_count": len(p.get("host") or []),
+                "drs_enabled": bool(p.get("configuration.drsConfig.enabled")),
+                "drs_behavior": str(drs_behavior) if drs_behavior else "N/A",
+                "ha_enabled": bool(p.get("configuration.dasConfig.enabled")),
+                "total_cpu_mhz": p.get("summary.totalCpu") or 0,
+                "total_memory_gb": round(total_mem / (1024**3)) if total_mem else 0,
+            }
+        )
     return sorted(results, key=lambda x: x["name"])
 
 
@@ -311,11 +325,13 @@ def list_networks(si: ServiceInstance) -> list[dict]:
     results = []
     for _obj, p in _collect(si, [vim.Network], _NET_PROPS):
         accessible = p.get("summary.accessible")
-        results.append({
-            "name": p.get("name", ""),
-            "vm_count": len(p.get("vm") or []),
-            "accessible": accessible if accessible is not None else True,
-        })
+        results.append(
+            {
+                "name": p.get("name", ""),
+                "vm_count": len(p.get("vm") or []),
+                "accessible": accessible if accessible is not None else True,
+            }
+        )
     return sorted(results, key=lambda x: x["name"])
 
 
@@ -323,5 +339,21 @@ def find_vm_by_name(si: ServiceInstance, vm_name: str) -> vim.VirtualMachine | N
     """Find a VM by exact name. Returns None if not found."""
     for obj, p in _collect(si, [vim.VirtualMachine], ["name"]):
         if p.get("name") == vm_name:
+            return obj
+    return None
+
+
+def find_host_by_name(si: ServiceInstance, host_name: str) -> vim.HostSystem | None:
+    """Find an ESXi host by exact name. Returns None if not found."""
+    for obj, p in _collect(si, [vim.HostSystem], ["name"]):
+        if p.get("name") == host_name:
+            return obj
+    return None
+
+
+def find_datastore_by_name(si: ServiceInstance, datastore_name: str) -> vim.Datastore | None:
+    """Find a datastore by exact name. Returns None if not found."""
+    for obj, p in _collect(si, [vim.Datastore], ["name"]):
+        if p.get("name") == datastore_name:
             return obj
     return None

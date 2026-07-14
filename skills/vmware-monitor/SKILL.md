@@ -2,8 +2,8 @@
 name: vmware-monitor
 description: >
   Use this skill for safe, risk-free queries of VMware infrastructure — code-level enforced safety means no destructive operations exist in the codebase.
-  Directly handles: a one-glance cross-cluster health summary (top-N issues + per-cluster status), list VMs/hosts/datastores/clusters, check active alarms with remediation hints, view recent events, get VM details (CPU/memory/disks/NICs/snapshots).
-  Always use vmware-monitor when the user asks to "list VMs", "check vSphere alarms", "show host status", "get VM details", or for a quick triage like "what's wrong in my vSphere environment", "is anything on fire", "cluster health summary" — or needs read-only VMware info before making changes.
+  Directly handles: a one-glance cross-cluster health summary, object-centered VM/host/datastore investigation drill-downs (correlating surrounding infrastructure + recent events), a cross-vCenter "what needs attention now?" rollup, list VMs/hosts/datastores/clusters, active alarms, recent events, VM details.
+  Always use vmware-monitor when the user asks to "list VMs", "check vSphere alarms", "show host status", "is anything on fire", "what needs attention now", "what is happening around this VM/host/datastore", "investigate this VM" — or needs read-only VMware info before making changes.
   Do NOT use for any write operations — this skill is code-level read-only and cannot modify, create, or delete any resource.
   For VM modifications use vmware-aiops, for networking use vmware-nsx, for metrics/capacity use vmware-aria. For load balancing/AVI/AKO use vmware-avi.
 installer:
@@ -21,7 +21,7 @@ compatibility: >
 
 > **Disclaimer**: This is a community-maintained open-source project and is **not affiliated with, endorsed by, or sponsored by VMware, Inc. or Broadcom Inc.** "VMware" and "vSphere" are trademarks of Broadcom. Source code is publicly auditable at [github.com/zw008/VMware-Monitor](https://github.com/zw008/VMware-Monitor) under the MIT license.
 
-Read-only VMware vCenter/ESXi monitoring — 23 MCP tools, zero destructive code.
+Read-only VMware vCenter/ESXi monitoring — 27 MCP tools, zero destructive code.
 
 > **Code-level safety**: This skill contains NO power, create, delete, snapshot, or modify operations. Not disabled — they don't exist in the codebase.
 > **Companion skills**: [vmware-aiops](https://github.com/zw008/VMware-AIops) (VM lifecycle), [vmware-storage](https://github.com/zw008/VMware-Storage) (iSCSI/vSAN), [vmware-vks](https://github.com/zw008/VMware-VKS) (Tanzu Kubernetes), [vmware-nsx](https://github.com/zw008/VMware-NSX) (NSX networking), [vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security) (DFW/firewall), [vmware-aria](https://github.com/zw008/VMware-Aria) (metrics/alerts/capacity), [vmware-avi](https://github.com/zw008/VMware-AVI) (AVI/ALB/AKO), [vmware-harden](https://github.com/zw008/VMware-Harden) (compliance baselines).
@@ -29,11 +29,12 @@ Read-only VMware vCenter/ESXi monitoring — 23 MCP tools, zero destructive code
 
 ## What This Skill Does
 
-All 23 tools are **read-only**.
+All 27 tools are **read-only**.
 
 | Category | Capabilities |
 |----------|-------------|
 | **Cluster Triage** | One-glance `cluster_health_summary` — cross-cluster Problems/Capacity/Health rollup with an opinionated status; customizable view |
+| **Object Investigation** | "What is happening around this VM / host / datastore?" — one correlated drill-down bundle per object (state + host/cluster/datastore context + snapshots + alarms + performance + a merged event timeline), plus `cross_vcenter_attention` — one ranked "what needs attention now?" list across every configured vCenter |
 | **Inventory** | List VMs, ESXi hosts, datastores, clusters, networks |
 | **Health** | Active alarms, recent events (filter by severity/time), hardware sensors, host services |
 | **Performance** | Real-time host & VM CPU/memory/disk/network utilisation (PerfManager) |
@@ -124,11 +125,20 @@ AI agents (especially smaller local models) can read these hints directly to det
 3. List hosts --> `vmware-monitor inventory hosts` — flag hosts disconnected, in maintenance mode unexpectedly, or memory > 90%
 4. **If connection fails** --> run `vmware-monitor doctor` to diagnose config/network issues
 
-### Investigate a Specific VM
-1. Find the VM --> `vmware-monitor inventory vms --power-state poweredOff`
-2. Get details --> `vmware-monitor vm info problem-vm`
-3. Check related events --> `vmware-monitor health events --hours 48`
-4. **If VM not found** --> verify VM name with `vmware-monitor inventory vms --limit 100` or check target with `--target <other-vcenter>`
+### Object-Centered Investigation ("what is happening around this VM / host / datastore?")
+
+**Judgment**: this is the drill-down the operator wants after triage points at a problem — one call *correlates* the object with its surrounding infrastructure and recent history, so you explain the aggregated result in operational language instead of stitching five tools yourself. The tool aggregates; you never dump raw inventory into the conversation.
+
+Offer the levels progressively — do **not** ask for details the environment already fixes:
+1. **Start at the top** --> `cross_vcenter_attention` (CLI: `vmware-monitor attention`) for "what needs attention now?" across every vCenter. If only one vCenter is configured, skip straight to its `cluster_health_summary` — no need to ask which target
+2. **Offer to drill into an object** the top-issues list points at. Ask *which level* only when it is genuinely ambiguous:
+   - a VM --> `vm_investigation_bundle` (CLI: `vmware-monitor investigate vm <name>`) → VM state, recent events, snapshots, alarms & recent changes, the host it runs on, the cluster context, the datastores backing it, performance signals, and a correlated event timeline
+   - a host --> `host_investigation_bundle` (CLI: `investigate host <name>`) → host state, cluster context, the VMs it runs, mounted datastores, alarms, performance, correlated timeline
+   - a datastore --> `datastore_investigation_bundle` (CLI: `investigate datastore <name>`) → capacity/free, mounting hosts, VMs it backs, alarms, correlated timeline
+3. **Widen or narrow** on request --> `--hours 72` for a longer event window; the bundle ends with a hint listing what is adjustable
+4. **Make it tangible** --> add `--html` to any `investigate`/`attention` command for a self-contained offline snapshot (drill-down sections collapse/expand natively, no JS, nothing uploaded) written to `~/vmware-health/`
+5. **If the object name is unknown** --> the tool returns a *teaching* error naming exactly how to list the objects (`list_vms` / `list_esxi_hosts` / `list_all_datastores`); get the exact name and retry
+6. **If a vCenter is unreachable** (attention only) --> it is listed under `unreachable` with a reason and the rest still aggregate — surface the gap, don't fail the whole view
 
 ### Performance Triage ("the cluster feels slow")
 **Judgment**: inventory shows *configured* capacity (cores, GB); it cannot tell you what is actually hot. Use the real-time perf tools, then narrow.
@@ -156,7 +166,7 @@ AI agents (especially smaller local models) can read these hints directly to det
 | Cloud models (Claude, GPT-4o) | Either | MCP gives structured JSON I/O |
 | Automated pipelines | **MCP** | Type-safe parameters, structured output |
 
-## MCP Tools (23 — all read-only)
+## MCP Tools (27 — all read-only)
 
 | Tool | Description |
 |------|------------|
@@ -165,6 +175,10 @@ AI agents (especially smaller local models) can read these hints directly to det
 | `list_all_datastores` | Datastores with capacity, free space, type |
 | `list_all_clusters` | Clusters with host count, DRS/HA status |
 | `cluster_health_summary` | One-glance triage across all clusters — ranked `top_issues` focus list (top-N anomalies, worst first, with drill-down hints) + per-cluster rollup with opinionated `status` (ok/warn/critical). Params: `cluster_filter`, `include_vms`, `top_n`. Render as a table or HTML; see `references/health-summary-template.md` |
+| `vm_investigation_bundle` | "What is happening around this VM?" — correlated drill-down: VM state + host/cluster/datastore context + snapshots + alarms (all scopes) + live performance + a merged, newest-first **event timeline** across the VM/host/cluster/datastore. Params: `vm_name`, `hours`. Aggregated in the tool; explain, don't dump raw |
+| `host_investigation_bundle` | "What is happening around this ESXi host?" — host state + cluster context + VM rollup + mounted datastores + alarms + performance + correlated event timeline. Params: `host_name`, `hours` |
+| `datastore_investigation_bundle` | "What is happening around this datastore?" — capacity/free + mounting hosts + VM rollup + alarms + correlated event timeline. Params: `datastore_name`, `hours` |
+| `cross_vcenter_attention` | "What needs attention now?" across **every** configured vCenter — one globally-ranked `top_issues` list (each tagged with its `vcenter`) + per-target rollup; unreachable targets degrade gracefully. Params: `cluster_filter`, `top_n` |
 | `list_all_networks` | Networks with attached VM count and accessibility |
 | `get_alarms` | All active/triggered alarms — includes `suggested_actions` remediation hints |
 | `get_events` | Recent events filtered by severity and time — includes `suggested_actions` hints |

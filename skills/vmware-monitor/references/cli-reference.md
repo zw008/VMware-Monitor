@@ -33,6 +33,33 @@ vmware-monitor summary [--top <n>] [--cluster <substring>] [--no-vms] [--html] [
 - `--html-path <file>`: write the HTML snapshot to an explicit path instead of the auto-timestamped default (implies `--html`).
 - The rendered view is customizable — columns, thresholds, and layout live in [`health-summary-template.md`](health-summary-template.md). MCP tool: `cluster_health_summary`.
 
+## Object Investigation (drill-down)
+
+```bash
+vmware-monitor investigate vm <name>        [--hours <n>] [--html] [--html-path <file>] [--target <name>]
+vmware-monitor investigate host <name>      [--hours <n>] [--html] [--html-path <file>] [--target <name>]
+vmware-monitor investigate datastore <name> [--hours <n>] [--html] [--html-path <file>] [--target <name>]
+```
+
+- "What is happening around this object?" — one call *correlates* the object with its surrounding infrastructure and recent history, so the model explains an aggregated result instead of stitching several tools. Read-only; all cross-object reads are batched (cheap on large fleets).
+- **vm**: VM state, the host it runs on, its cluster context, backing datastores, snapshots, alarms (across VM/host/cluster/datastore), live performance, and a merged newest-first **event timeline** correlating the VM/host/cluster/datastore.
+- **host**: host state (connection, CPU/memory, ESXi version, uptime), cluster context, a rollup of the VMs it runs, mounted datastores, alarms, performance, correlated timeline.
+- **datastore**: capacity/free/accessibility, the hosts mounting it, a rollup of the VMs it backs, alarms, correlated timeline (per-datastore latency is a separate perf report, not included).
+- `--hours`: event-timeline look-back window (default 24).
+- `--html` / `--html-path`: self-contained offline snapshot to `~/vmware-health/investigate-<kind>-<object>-<timestamp>.html`; drill-down sections collapse/expand natively (no JS), nothing uploaded.
+- Unknown object names return a *teaching* error naming how to list objects. MCP tools: `vm_investigation_bundle`, `host_investigation_bundle`, `datastore_investigation_bundle`.
+
+## Cross-vCenter Attention
+
+```bash
+vmware-monitor attention [--top <n>] [--cluster <substring>] [--html] [--html-path <file>]
+```
+
+- "What needs attention now?" across **every** configured vCenter — one globally-ranked `top_issues` list (each tagged with its `vcenter`) plus a per-target table. Use it instead of running `summary` once per target and merging by hand.
+- Degrades gracefully: a target that can't be reached (or errors mid-summary) is listed as `unreachable` with a reason, and the rest still aggregate — one dead vCenter never sinks the view.
+- `--top`: size of the merged focus list (default 10). `--cluster`: case-insensitive substring applied to every target.
+- `--html` / `--html-path`: offline snapshot to `~/vmware-health/attention-<timestamp>.html`. MCP tool: `cross_vcenter_attention`.
+
 ## Inventory
 
 ```bash

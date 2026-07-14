@@ -28,6 +28,7 @@ from vmware_monitor.cli_base import (
     audit,
     cli_errors,
     console,
+    get_all_connections,
     get_connection,
 )
 
@@ -36,6 +37,7 @@ capacity_app = typer.Typer(help="Capacity analytics: over-commit, resource pools
 infra_app = typer.Typer(help="Infra health: certificates, licenses, NTP (read-only).")
 snapshots_app = typer.Typer(help="Inventory-wide snapshot aging/sprawl (read-only).")
 activity_app = typer.Typer(help="Live activity: tasks and sessions (read-only).")
+investigate_app = typer.Typer(help="Object-centered investigation bundles (read-only).")
 
 LimitOption = Annotated[int | None, typer.Option("--limit", "-n", help="Max rows to show")]
 
@@ -546,6 +548,296 @@ def render_summary_console(data: dict, top: int) -> None:
     console.print(f"[dim]{data['customization_hint']}[/]")
 
 
+# ─── investigate (object-centered drill-down bundles) ────────────────────────
+
+
+def write_bundle_html_snapshot(
+    bundle: dict, kind: str, vcenter: str, explicit_path: Path | None
+) -> None:
+    """Render an investigation bundle to a self-contained HTML file, report the path.
+
+    Default location mirrors the cluster-health snapshot:
+    ``~/vmware-health/investigate-<kind>-<object>-<YYYYMMDD-HHMMSS>.html`` — fully
+    offline (no external CSS/JS/fonts), nothing leaves the machine.
+    """
+    from vmware_monitor.ops.investigate_html import render_bundle_html
+
+    now = datetime.now().astimezone()
+    obj_name = _slug(str(bundle.get("object", {}).get("name", kind)))
+    if explicit_path is not None:
+        path = explicit_path.expanduser()
+    else:
+        ts = now.strftime("%Y%m%d-%H%M%S")
+        path = Path.home() / "vmware-health" / f"investigate-{kind}-{obj_name}-{ts}.html"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    document = render_bundle_html(bundle, kind, vcenter, now, filename=path.name)
+    path.write_text(document, encoding="utf-8")
+    console.print(f"[green]Wrote {kind} investigation snapshot →[/] {path}")
+    console.print(f"[dim]Open it: open '{path}'  (offline file, nothing uploaded)[/]")
+
+
+def render_bundle_console(bundle: dict, kind: str) -> None:
+    """Print an investigation bundle to the terminal (context + timeline + detail).
+
+    Public so vmware-aiops can present the identical view via the delegated library
+    without duplicating rendering.
+    """
+    obj = bundle.get("object", {})
+    console.print(
+        f"[bold]{kind.upper()} investigation[/] — {obj.get('name', '')}"
+        f"  ·  status: {obj.get('status', 'gray')}"
+    )
+    host = bundle.get("host")
+    if host:
+        console.print(
+            f"  host: [cyan]{host['name']}[/] ({host['connection']}, "
+            f"CPU {host['cpu_pct']}% / Mem {host['mem_pct']}%)"
+        )
+    cluster = bundle.get("cluster")
+    if cluster:
+        console.print(
+            f"  cluster: [cyan]{cluster['name']}[/] "
+            f"(HA {'on' if cluster['ha_enabled'] else 'off'}, "
+            f"DRS {'on' if cluster['drs_enabled'] else 'off'})"
+        )
+    for h in bundle.get("hosts", []):
+        console.print(
+            f"  host: [cyan]{h['name']}[/] ({h['connection']}, "
+            f"CPU {h['cpu_pct']}% / Mem {h['mem_pct']}%)"
+        )
+    for ds in bundle.get("datastores", []):
+        console.print(f"  datastore: [cyan]{ds['name']}[/] ({ds['free_pct']}% free)")
+    vms = bundle.get("vms")
+    if vms is not None:
+        sample = ", ".join(vms.get("sample", []))
+        extra = f" — {sample}" if sample else ""
+        console.print(f"  VMs: {vms['powered_on']}/{vms['total']} powered on{extra}")
+
+    alarms = bundle.get("alarms", [])
+    if alarms:
+        atbl = Table(title=f"Alarms ({len(alarms)})")
+        atbl.add_column("Severity")
+        atbl.add_column("Alarm", style="cyan")
+        atbl.add_column("On")
+        for a in alarms:
+            atbl.add_row(
+                f"[{_SEV_STYLE.get(a['severity'], 'white')}]{a['severity'].upper()}[/]",
+                a["name"],
+                f"{a['scope']} {a['object']}",
+            )
+        console.print(atbl)
+
+    timeline = bundle.get("timeline", [])
+    ttl = Table(title=f"Event timeline · last {bundle.get('hours', 24)}h ({len(timeline)})")
+    ttl.add_column("Time", style="dim")
+    ttl.add_column("Sev")
+    ttl.add_column("Source")
+    ttl.add_column("Message")
+    for e in timeline:
+        ttl.add_row(
+            e["time"],
+            f"[{_SEV_STYLE.get(e['severity'], 'white')}]{e['severity'][:4].upper()}[/]",
+            f"{e['scope']} {e['entity']}",
+            e["message"],
+        )
+    console.print(ttl)
+    console.print(f"[dim]{bundle.get('customization_hint', '')}[/]")
+
+
+HoursOption = Annotated[int, typer.Option("--hours", help="Event-timeline look-back window")]
+HtmlFlag = Annotated[
+    bool, typer.Option("--html", help="Write an offline HTML snapshot to ~/vmware-health/")
+]
+HtmlPathOption = Annotated[
+    Path | None,
+    typer.Option("--html-path", help="Write the HTML snapshot to this exact path (implies --html)"),
+]
+
+
+@investigate_app.command("vm")
+@cli_errors
+def investigate_vm_cmd(
+    vm_name: Annotated[str, typer.Argument(help="Exact VM name to investigate")],
+    hours: HoursOption = 24,
+    html: HtmlFlag = False,
+    html_path: HtmlPathOption = None,
+    target: TargetOption = None,
+    config: ConfigOption = None,
+) -> None:
+    """"What is happening around this VM?" — correlated drill-down.
+
+    Aggregates the VM's state, its host/cluster/datastore context, snapshots,
+    alarms, live performance, and a merged event timeline correlating recent
+    events from the VM, host, cluster and datastores. Pass --html for an offline,
+    shareable snapshot (drill-down detail in collapsible sections).
+    """
+    from vmware_monitor.ops.investigate_vm import get_vm_investigation_bundle
+
+    si, _, tgt = get_connection(target, config)
+    bundle = get_vm_investigation_bundle(si, vm_name, hours=hours)
+    audit.log_query(target=tgt, resource=vm_name, query_type="vm_investigation_bundle")
+
+    if html or html_path is not None:
+        write_bundle_html_snapshot(bundle, "vm", tgt, html_path)
+        return
+    render_bundle_console(bundle, "vm")
+
+
+@investigate_app.command("host")
+@cli_errors
+def investigate_host_cmd(
+    host_name: Annotated[str, typer.Argument(help="Exact ESXi host name to investigate")],
+    hours: HoursOption = 24,
+    html: HtmlFlag = False,
+    html_path: HtmlPathOption = None,
+    target: TargetOption = None,
+    config: ConfigOption = None,
+) -> None:
+    """"What is happening around this ESXi host?" — correlated drill-down.
+
+    Aggregates the host's state, its cluster context, the VMs it runs, the
+    datastores it mounts, alarms, live performance, and a merged event timeline
+    correlating the host, cluster and datastores. Pass --html for an offline
+    shareable snapshot.
+    """
+    from vmware_monitor.ops.investigate_host import get_host_investigation_bundle
+
+    si, _, tgt = get_connection(target, config)
+    bundle = get_host_investigation_bundle(si, host_name, hours=hours)
+    audit.log_query(target=tgt, resource=host_name, query_type="host_investigation_bundle")
+
+    if html or html_path is not None:
+        write_bundle_html_snapshot(bundle, "host", tgt, html_path)
+        return
+    render_bundle_console(bundle, "host")
+
+
+@investigate_app.command("datastore")
+@cli_errors
+def investigate_datastore_cmd(
+    datastore_name: Annotated[str, typer.Argument(help="Exact datastore name to investigate")],
+    hours: HoursOption = 24,
+    html: HtmlFlag = False,
+    html_path: HtmlPathOption = None,
+    target: TargetOption = None,
+    config: ConfigOption = None,
+) -> None:
+    """"What is happening around this datastore?" — correlated drill-down.
+
+    Aggregates the datastore's capacity/free space, the hosts that mount it, the
+    VMs it backs, alarms, and a merged event timeline correlating the datastore
+    and its hosts. Pass --html for an offline shareable snapshot.
+    """
+    from vmware_monitor.ops.investigate_datastore import get_datastore_investigation_bundle
+
+    si, _, tgt = get_connection(target, config)
+    bundle = get_datastore_investigation_bundle(si, datastore_name, hours=hours)
+    audit.log_query(
+        target=tgt, resource=datastore_name, query_type="datastore_investigation_bundle"
+    )
+
+    if html or html_path is not None:
+        write_bundle_html_snapshot(bundle, "datastore", tgt, html_path)
+        return
+    render_bundle_console(bundle, "datastore")
+
+
+# ─── attention (cross-vCenter "what needs attention now?") ───────────────────
+
+
+def render_attention_console(data: dict) -> None:
+    """Print the cross-vCenter attention view to the terminal.
+
+    Public so vmware-aiops can present the identical view via the delegated library.
+    """
+    t = data["totals"]
+    console.print(
+        f"[bold]What needs attention[/] — {t['vcenters']} vCenters, "
+        f"{t['clusters']} clusters, {t['hosts_connected']}/{t['hosts_total']} hosts connected"
+        f"  ·  overall: [{_STATUS_STYLE[t['worst_status']]}]{t['worst_status'].upper()}[/]"
+    )
+    for u in data.get("unreachable", []):
+        console.print(f"[yellow]unreachable:[/] {u['vcenter']} ({u['reason']})")
+
+    _render_top_issues(_with_vcenter_cluster(data), data.get("issues_total", 0))
+
+    table = Table(title="vCenters (worst status first)")
+    table.add_column("Status")
+    table.add_column("vCenter", style="cyan")
+    table.add_column("Clusters", justify="right")
+    table.add_column("Hosts", justify="right")
+    table.add_column("Alarms C/W", justify="right")
+    for tg in data["targets"]:
+        style = _STATUS_STYLE.get(tg["worst_status"], "white")
+        table.add_row(
+            f"[{style}]{tg['worst_status'].upper()}[/]",
+            tg["vcenter"],
+            str(tg["clusters"]),
+            f"{tg['hosts_connected']}/{tg['hosts_total']}",
+            f"{tg['alarms']['critical']}/{tg['alarms']['warning']}",
+        )
+    console.print(table)
+    console.print(f"[dim]{data.get('customization_hint', '')}[/]")
+
+
+def _with_vcenter_cluster(data: dict) -> dict:
+    """Fold each issue's vCenter into its cluster label so the shared top-issues
+    table (which prints a 'Cluster' column) shows which estate it belongs to."""
+    issues = []
+    for i in data.get("top_issues", []):
+        j = dict(i)
+        j["cluster"] = f"{i.get('vcenter', '')}/{i.get('cluster') or '—'}"
+        issues.append(j)
+    return {"top_issues": issues, "issues_total": data.get("issues_total", 0)}
+
+
+def write_attention_html_snapshot(data: dict, explicit_path: Path | None) -> None:
+    """Render the attention view to a self-contained HTML file and report the path."""
+    from vmware_monitor.ops.attention_html import render_attention_html
+
+    now = datetime.now().astimezone()
+    if explicit_path is not None:
+        path = explicit_path.expanduser()
+    else:
+        ts = now.strftime("%Y%m%d-%H%M%S")
+        path = Path.home() / "vmware-health" / f"attention-{ts}.html"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_attention_html(data, now, filename=path.name), encoding="utf-8")
+    console.print(f"[green]Wrote cross-vCenter attention snapshot →[/] {path}")
+    console.print(f"[dim]Open it: open '{path}'  (offline file, nothing uploaded)[/]")
+
+
+@cli_errors
+def attention_cmd(
+    cluster: Annotated[
+        str | None, typer.Option("--cluster", help="Show only clusters matching this substring")
+    ] = None,
+    top: Annotated[int, typer.Option("--top", help="Size of the merged top-issues list")] = 10,
+    html: HtmlFlag = False,
+    html_path: HtmlPathOption = None,
+    config: ConfigOption = None,
+) -> None:
+    """Cross-vCenter "what needs attention now?" — one ranked list across all targets.
+
+    Rolls every configured vCenter's cluster health into a single globally-ranked
+    top-issues list plus a per-vCenter table. A target that can't be reached is
+    listed as unreachable and the rest still aggregate. Pass --html for an offline
+    shareable snapshot.
+    """
+    from vmware_monitor.ops.attention import get_cross_vcenter_attention
+
+    sessions, unreachable = get_all_connections(config)
+    data = get_cross_vcenter_attention(
+        sessions, unreachable=unreachable, cluster_filter=cluster, top_n=top
+    )
+    audit.log_query(target="*", resource="all-vcenters", query_type="cross_vcenter_attention")
+
+    if html or html_path is not None:
+        write_attention_html_snapshot(data, html_path)
+        return
+    render_attention_console(data)
+
+
 def register(app: typer.Typer) -> None:
     """Attach all observability sub-apps to the root CLI."""
     app.add_typer(perf_app, name="perf")
@@ -553,4 +845,6 @@ def register(app: typer.Typer) -> None:
     app.add_typer(infra_app, name="infra")
     app.add_typer(snapshots_app, name="snapshots")
     app.add_typer(activity_app, name="activity")
+    app.add_typer(investigate_app, name="investigate")
     app.command("summary")(cluster_summary_cmd)
+    app.command("attention")(attention_cmd)

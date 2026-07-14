@@ -45,6 +45,7 @@ from vmware_monitor.ops.capacity import (
     get_datastore_capacity,
     get_resource_pool_usage,
 )
+from vmware_monitor.ops.attention import get_cross_vcenter_attention
 from vmware_monitor.ops.cluster_summary import get_cluster_health_summary
 from vmware_monitor.ops.infra_health import (
     get_certificate_status,
@@ -58,6 +59,9 @@ from vmware_monitor.ops.inventory import (
     list_networks,
     list_vms,
 )
+from vmware_monitor.ops.investigate_datastore import get_datastore_investigation_bundle
+from vmware_monitor.ops.investigate_host import get_host_investigation_bundle
+from vmware_monitor.ops.investigate_vm import get_vm_investigation_bundle
 from vmware_monitor.ops.performance import get_host_performance, get_vm_performance
 from vmware_monitor.ops.snapshots import list_snapshot_aging
 from vmware_monitor.ops.vm_info import get_vm_info, list_snapshots
@@ -122,15 +126,20 @@ mcp = FastMCP(
 _conn_mgr: Optional[ConnectionManager] = None
 
 
-def _get_connection(target: Optional[str] = None) -> Any:
-    """Return a pyVmomi ServiceInstance, lazily initialising the manager."""
+def _ensure_conn_mgr() -> ConnectionManager:
+    """Lazily build the shared ConnectionManager (does not connect anything)."""
     global _conn_mgr  # noqa: PLW0603
     if _conn_mgr is None:
         config_path_str = os.environ.get("VMWARE_MONITOR_CONFIG")
         config_path = Path(config_path_str) if config_path_str else None
         config = load_config(config_path)
         _conn_mgr = ConnectionManager(config)
-    return _conn_mgr.connect(target)
+    return _conn_mgr
+
+
+def _get_connection(target: Optional[str] = None) -> Any:
+    """Return a pyVmomi ServiceInstance, lazily initialising the manager."""
+    return _ensure_conn_mgr().connect(target)
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +325,160 @@ def cluster_health_summary(
     si = _get_connection(target)
     return get_cluster_health_summary(
         si, cluster_filter=cluster_filter, include_vms=include_vms, top_n=top_n
+    )
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def vm_investigation_bundle(
+    vm_name: str,
+    target: Optional[str] = None,
+    hours: int = 24,
+) -> dict:
+    """[READ] "What is happening around this VM?" — one correlated drill-down.
+
+    Collects and *correlates* everything around a single VM so you don't stitch
+    get_vm_info + list_snapshots + get_alarms + get_vm_performance + get_recent_events
+    yourself (which a smaller model often mis-orders): the VM's state, the host it
+    runs on, its cluster context, the datastores backing it, its snapshots and
+    triggered alarms, live performance, and a merged **event timeline** correlating
+    recent events from the VM, host, cluster and datastores (newest first). All
+    cross-object reads are batched — cheap even on large fleets. Aggregation happens
+    in the tool; explain the result in operational language, do not dump it raw.
+
+    Use this AFTER cluster_health_summary points at a problem VM, or whenever the
+    operator asks "what's going on with <vm>?". Point-in-time snapshot — no trending.
+
+    Args:
+        vm_name: Exact VM name. Unknown names return a teaching error naming how to
+            list VMs. Get the name from list_vms or cluster_health_summary first.
+        target: Optional vCenter/ESXi target name from config (default target if omitted).
+        hours: Event-timeline look-back window in hours (default 24).
+    """
+    si = _get_connection(target)
+    return get_vm_investigation_bundle(si, vm_name, hours=hours)
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def host_investigation_bundle(
+    host_name: str,
+    target: Optional[str] = None,
+    hours: int = 24,
+) -> dict:
+    """[READ] "What is happening around this ESXi host?" — one correlated drill-down.
+
+    Collects and *correlates* everything around a single host: its state (connection,
+    CPU/memory pressure, ESXi version, uptime), its cluster context, a rollup of the
+    VMs it runs (total / powered-on + a sample), the datastores it mounts, triggered
+    alarms across host/cluster/datastore, live performance, and a merged **event
+    timeline** correlating recent events from the host, cluster and datastores. All
+    reads are batched. Aggregation happens in the tool; explain it in operational
+    language, do not dump it raw.
+
+    Use this AFTER cluster_health_summary flags a host, or when the operator asks
+    "what's going on with host <x>?". Point-in-time snapshot — no trending.
+
+    Args:
+        host_name: Exact ESXi host name. Unknown names return a teaching error.
+            Get the name from list_esxi_hosts or cluster_health_summary first.
+        target: Optional vCenter/ESXi target name from config (default if omitted).
+        hours: Event-timeline look-back window in hours (default 24).
+    """
+    si = _get_connection(target)
+    return get_host_investigation_bundle(si, host_name, hours=hours)
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def datastore_investigation_bundle(
+    datastore_name: str,
+    target: Optional[str] = None,
+    hours: int = 24,
+) -> dict:
+    """[READ] "What is happening around this datastore?" — one correlated drill-down.
+
+    Collects and *correlates* everything around a single datastore: its capacity /
+    free space / accessibility, the hosts that mount it, a rollup of the VMs it backs
+    (total / powered-on + a sample), triggered alarms across datastore/host, and a
+    merged **event timeline** correlating recent events from the datastore and its
+    hosts. All reads are batched. Aggregation happens in the tool; explain it in
+    operational language, do not dump it raw. (Per-datastore latency is a separate
+    perf report, not included here.)
+
+    Use this AFTER cluster_health_summary flags storage pressure, or when the operator
+    asks "what's going on with datastore <x>?". Point-in-time snapshot — no trending.
+
+    Args:
+        datastore_name: Exact datastore name. Unknown names return a teaching error.
+            Get the name from list_all_datastores or datastore_capacity first.
+        target: Optional vCenter/ESXi target name from config (default if omitted).
+        hours: Event-timeline look-back window in hours (default 24).
+    """
+    si = _get_connection(target)
+    return get_datastore_investigation_bundle(si, datastore_name, hours=hours)
+
+
+@mcp.tool(
+    annotations={
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": True,
+    }
+)
+@vmware_tool(risk_level="low")
+@_catch_tool_errors
+def cross_vcenter_attention(
+    cluster_filter: Optional[str] = None,
+    top_n: int = 10,
+) -> dict:
+    """[READ] "What needs attention now?" across EVERY configured vCenter — one list.
+
+    Rolls every configured target's cluster-health summary into a single, globally
+    ranked ``top_issues`` list (worst first, each tagged with its ``vcenter``) plus a
+    per-target rollup — the "where do I look first, anywhere in the estate?" view.
+    Use this instead of calling cluster_health_summary once per target and merging
+    yourself. Aggregation happens in the tool; lead with ``top_issues`` and explain
+    in operational language.
+
+    Degrades gracefully: a target that cannot be reached (or errors mid-summary) is
+    listed under ``unreachable`` with a reason, and the rest still aggregate — so a
+    single dead vCenter never sinks the view. Point-in-time snapshot — no trending.
+
+    Args:
+        cluster_filter: Case-insensitive cluster substring applied to every target
+            (None = all clusters).
+        top_n: Cap the merged top_issues focus list (default 10). ``issues_total``
+            reports the pre-cap count.
+    """
+    sessions, unreachable = _ensure_conn_mgr().connect_all()
+    return get_cross_vcenter_attention(
+        sessions, unreachable=unreachable, cluster_filter=cluster_filter, top_n=top_n
     )
 
 

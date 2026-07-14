@@ -89,7 +89,14 @@ def test_mcp_exposes_snapshot_listing() -> None:
         # "is anything on fire?" glance juanpf-ha asked for (aggregation in the
         # tool, model just renders; not an Aria replacement).
         "cluster_health_summary",
+        # issue #31 follow-up: object-centered drill-down — "what is happening
+        # around this <object>?" correlating related infra + event timeline.
+        "vm_investigation_bundle",
+        "host_investigation_bundle",
+        "datastore_investigation_bundle",
+        # issue #31 follow-up: cross-vCenter "what needs attention now?" roll-up.
+        "cross_vcenter_attention",
     }
     missing = expected_new - tools
     assert not missing, f"observability tools missing from MCP: {sorted(missing)}"
-    assert len(tools) == 23, f"expected 23 MCP tools, got {len(tools)}: {sorted(tools)}"
+    assert len(tools) == 27, f"expected 27 MCP tools, got {len(tools)}: {sorted(tools)}"
