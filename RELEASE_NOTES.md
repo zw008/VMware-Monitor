@@ -1,3 +1,28 @@
+## v1.7.7 (2026-07-17) — session-probe eviction fix + mcp 1.28.1
+
+Family fix pack — no new tools, no schema changes.
+
+### Fixed
+- **Dead cached vCenter sessions were never evicted** (external fork report,
+  VMware-AIops PR #32). The liveness probe's handler was
+  `except (vmodl.fault.NotAuthenticated, Exception)` — but
+  `vmodl.fault.NotAuthenticated` does not exist in pyVmomi (the real class
+  lives under `vim.fault`), and except-tuples are evaluated at catch time, so
+  the handler raised `AttributeError` instead of evicting. A long-running MCP
+  server whose session idled out then permafailed every call until restart,
+  surfacing the misleading `AttributeError: NotAuthenticated` instead of the
+  real error. The probe now also treats a `None` `currentSession`
+  (expired-token shape) as dead. Three regression tests pin the probe shapes
+  (raise → evict + reconnect, None → evict + reconnect, live → cache reuse),
+  and family_smoke gained a static check banning the nonexistent class.
+
+### Security
+- Lockfile bumps `mcp` to **1.28.1**, clearing three GHSA HIGH advisories
+  against the MCP Python SDK (WebSocket Host/Origin validation, HTTP
+  transport principal verification, experimental task-handler cross-client
+  access). stdio-only servers are not directly exposed, and installs resolve
+  `mcp` fresh from PyPI — this mainly matters for from-source checkouts.
+
 ## v1.7.6 (2026-07-14) — object-centered investigation bundles + cross-vCenter attention
 
 Extends the issue #31 triage work from "is anything on fire?" to "what is happening
