@@ -32,7 +32,7 @@ from vmware_policy.policy import reset_policy_engine
 
 from vmware_monitor.config import AppConfig, TargetConfig
 
-import mcp_server.server as server
+import vmware_monitor.mcp_server.server as server
 
 
 @pytest.fixture(autouse=True)

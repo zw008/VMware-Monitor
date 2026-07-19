@@ -35,7 +35,7 @@ vmware-monitor works with any MCP-compatible agent. For fully local operation (n
 
 ```bash
 # Example: Aider + Ollama + vmware-monitor CLI
-aider --conventions codex-skill/AGENTS.md --model ollama/qwen2.5-coder:32b
+aider --conventions skills/vmware-monitor/SKILL.md --model ollama/qwen2.5-coder:32b
 
 # Example: Continue + Ollama + MCP Server
 # Configure Continue with Ollama model + vmware-monitor MCP server

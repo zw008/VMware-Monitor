@@ -1,3 +1,63 @@
+## v1.8.2 (2026-07-20) — the MCP server moves into the package namespace
+
+### Fixed — co-installing two skills broke all but the last one
+
+Every skill shipped its MCP server as a **top-level `mcp_server` package**. Python
+has one top-level namespace, so installing any two of them into one environment let
+the second overwrite the first — silently, with no error and no warning.
+
+    uv tool install vmware-aiops   ->  49 tools   (correct)
+    uv pip  install vmware-aiops   ->  27 tools   (Monitor's read-only server)
+
+vmware-aiops depends on vmware-monitor, so this was not an edge case: **every pip
+install hit it**, and the operator got 27 read-only tools where 49 were expected,
+with all 35 write tools missing. Docker images, shared MCP hosts and CI runners that
+install more than one skill were affected the same way.
+
+The server now lives at `vmware_<skill>/mcp_server/`, a name only this package can
+claim. Introduced 2026-02-26; it survived 70 releases because every test ran against
+a single package in its own repo, where the local directory shadows site-packages —
+the conflict was invisible by construction.
+
+**Migration.** Console scripts are unchanged: `vmware-<skill>` and
+`vmware-<skill>-mcp` work exactly as before, as does `"command": "vmware-<skill>",
+"args": ["mcp"]` in an MCP client config. Only a direct `python -m mcp_server`
+breaks; use `python -m vmware_<skill>.mcp_server`.
+
+### Added — `references/agent-guardrails.md` in every skill
+
+The operating rules for local and small models (Llama 3.3 70B, Qwen, Mistral via
+Goose / Ollama / OpenShift AI) existed in two skills. They now ship in all 13, each
+with its own tool counts and failure modes, and are linked from every SKILL.md.
+
+### Fixed — error messages now name a tool that exists
+
+`VM '...' not found. Run list_vms ...` named an internal ops function, not an MCP
+tool. A model following that instruction called something that does not exist, on
+the one path where it was already recovering from a failure. `family_smoke.sh` now
+checks every tool name in every error message against the whole family's live
+registry — the capability eval grades an error's *shape*, and shape does not imply
+truth.
+
+### Fixed — documentation that pointed at files which do not exist
+
+93 install instructions across Monitor and AIops told operators to copy
+`codex-skill/AGENTS.md`, `gemini-extension/GEMINI.md`, `trae-rules/project_rules.md`
+or `kimi-skill/SKILL.md`. None of those directories exist in any repo, and CLAUDE.md
+forbids recreating them — so every one of those commands failed. Where a platform
+reads plain markdown (Codex, Kimi, Trae, Aider, Continue) they now point at the real
+`skills/vmware-<skill>/SKILL.md`; Gemini CLI, which needs a manifest none of the
+repos ship, was downgraded to the context-file and MCP paths that do work.
+
+`/plugin marketplace add` was removed from both repos and from three setup guides:
+the `plugins/` source directory it needs was deleted in March and is on CLAUDE.md's
+forbidden list, so that path could not be made to work either.
+
+### Removed — the stale `.agents/` copy
+
+A 24-line subset of the maintained 305-line SKILL.md, missing `summary`,
+`investigate`, `attention` and `cluster_health_summary`.
+
 ## v1.8.1 (2026-07-19) — read-only mode reaches the surfaces that teach it
 
 v1.8.0 put read-only mode in the code and documented it in the README only.

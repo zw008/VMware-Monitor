@@ -25,12 +25,21 @@ PKG_NAME = "vmware_monitor"              # e.g. "vmware_nsx"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
-# ── 踩坑 #16, #17 — hatchling wheel must include mcp_server ─────────────
+# ── 踩坑 #16, #17, #41 — the server must ship, and only under our name ──
 
 
-def test_pyproject_declares_mcp_server_in_wheel() -> None:
-    """v1.5.5 incident: hatchling auto-discovery shipped wheels without
-    mcp_server/, breaking <skill>-mcp entry point on every install."""
+def test_pyproject_ships_the_server_inside_the_package() -> None:
+    """Two incidents, one assertion.
+
+    v1.5.5 (踩坑 #16/#17): hatchling auto-discovery shipped wheels without the
+    server module at all, breaking the <skill>-mcp entry point on every install.
+
+    v1.9.0 (踩坑 #41): the fix for that declared a *top-level* `mcp_server`
+    package — and so did the other 11 skills. Two of them in one environment
+    and the last install silently wins: `uv pip install vmware-aiops` served
+    Monitor's 27 read-only tools instead of AIops's 49, no error anywhere.
+    The server now lives inside the package namespace, where the name is ours.
+    """
     pyproject = REPO_ROOT / "pyproject.toml"
     data = tomllib.loads(pyproject.read_text())
     packages = (
@@ -42,18 +51,24 @@ def test_pyproject_declares_mcp_server_in_wheel() -> None:
         f"pyproject.toml must list '{PKG_NAME}' under "
         f"[tool.hatch.build.targets.wheel].packages — got {packages}"
     )
-    assert "mcp_server" in packages, (
-        f"pyproject.toml must list 'mcp_server' under "
-        f"[tool.hatch.build.targets.wheel].packages — got {packages}. "
-        "Without this, PyPI wheels ship without the MCP server module "
-        "(see CLAUDE.md 踩坑 #16)."
+    assert "mcp_server" not in packages, (
+        "pyproject.toml still declares a top-level 'mcp_server' package. Every "
+        "skill in the family would claim that same name, and co-installing two "
+        "of them makes the last one win silently (CLAUDE.md 踩坑 #41). Move it "
+        f"to {PKG_NAME}/mcp_server/ and point the entry point at "
+        f"{PKG_NAME}.mcp_server.server:main."
+    )
+    server = REPO_ROOT / PKG_NAME / "mcp_server" / "server.py"
+    assert server.exists(), (
+        f"expected the MCP server at {PKG_NAME}/mcp_server/server.py — without "
+        "it the <skill>-mcp entry point has nothing to import (踩坑 #16)."
     )
 
 
 # ── 踩坑 #18, #20 — every module must import cleanly ───────────────────
 
 
-@pytest.mark.parametrize("top_pkg", [PKG_NAME, "mcp_server"])
+@pytest.mark.parametrize("top_pkg", [PKG_NAME, f"{PKG_NAME}.mcp_server"])
 def test_every_module_imports(top_pkg: str) -> None:
     """v1.5.5 incident: NSX segment_mgmt.py / nat_route_mgmt.py and
     NSX-Security traceflow.py shipped with re.match() but no `import re`.

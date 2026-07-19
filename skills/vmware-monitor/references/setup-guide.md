@@ -17,10 +17,18 @@ clawhub install vmware-monitor
 
 ### Claude Code
 
+`npx skills add` and `clawhub install` both place the skill in Claude Code's skills
+directory. To install it manually from a clone:
+
+```bash
+mkdir -p ~/.claude/skills/vmware-monitor
+cp -r skills/vmware-monitor/. ~/.claude/skills/vmware-monitor/
 ```
-/plugin marketplace add zw008/VMware-Monitor
-/plugin install vmware-monitor
-/vmware-monitor:vmware-monitor
+
+For tool access (not just skill context), register the MCP server:
+
+```bash
+claude mcp add vmware-monitor -- vmware-monitor mcp
 ```
 
 ## What Gets Installed
@@ -185,14 +193,14 @@ vmware-monitor doctor      # reports ON/off, and which of the four sources decid
 
 | Platform | Status | Config File |
 |----------|--------|-------------|
-| Claude Code | Native Skill | `plugins/.../SKILL.md` |
-| Gemini CLI | Extension | `gemini-extension/GEMINI.md` |
-| OpenAI Codex CLI | Skill + AGENTS.md | `codex-skill/AGENTS.md` |
-| Aider | Conventions | `codex-skill/AGENTS.md` |
-| Continue CLI | Rules | `codex-skill/AGENTS.md` |
-| Trae IDE | Rules | `trae-rules/project_rules.md` |
-| Kimi Code CLI | Skill | `kimi-skill/SKILL.md` |
-| MCP Server | MCP Protocol | `mcp_server/` |
+| Claude Code | Native Skill | `skills/vmware-monitor/SKILL.md` |
+| Gemini CLI | Context file + MCP | `skills/vmware-monitor/SKILL.md` |
+| OpenAI Codex CLI | Skill + AGENTS.md | `skills/vmware-monitor/SKILL.md` |
+| Aider | Conventions | `skills/vmware-monitor/SKILL.md` |
+| Continue CLI | Rules | `skills/vmware-monitor/SKILL.md` |
+| Trae IDE | Rules | `skills/vmware-monitor/SKILL.md` |
+| Kimi Code CLI | Skill | `skills/vmware-monitor/SKILL.md` |
+| MCP Server | MCP Protocol | `vmware_monitor/mcp_server/` |
 | Python CLI | Standalone | N/A |
 
 ### MCP Server — Local Agent Compatibility
@@ -211,7 +219,7 @@ The MCP server works with any MCP-compatible agent via stdio transport. All 27 t
 
 ```bash
 # Example: Aider + Ollama (fully local, no cloud API)
-aider --conventions codex-skill/AGENTS.md --model ollama/qwen2.5-coder:32b
+aider --conventions skills/vmware-monitor/SKILL.md --model ollama/qwen2.5-coder:32b
 ```
 
 ## First Interaction: Environment Selection

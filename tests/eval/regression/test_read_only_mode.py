@@ -31,15 +31,15 @@ WRITE_TOOLS: set[str] = set()
 
 
 def _load_server(monkeypatch, read_only: str | None):
-    """Import mcp_server.server fresh under the given read-only env."""
+    """Import vmware_monitor.mcp_server.server fresh under the given read-only env."""
     monkeypatch.delenv("VMWARE_READ_ONLY", raising=False)
     monkeypatch.delenv("VMWARE_MONITOR_READ_ONLY", raising=False)
     if read_only is not None:
         monkeypatch.setenv("VMWARE_READ_ONLY", read_only)
 
-    for name in [m for m in sys.modules if m.startswith("mcp_server")]:
+    for name in [m for m in sys.modules if m.startswith("vmware_monitor.mcp_server")]:
         del sys.modules[name]
-    return importlib.import_module("mcp_server.server")
+    return importlib.import_module("vmware_monitor.mcp_server.server")
 
 
 def _tool_names(server) -> set[str]:
@@ -55,9 +55,9 @@ def _restore_modules():
     object — the patches silently stop applying. Saving and re-inserting keeps
     module identity stable across this file's reimports.
     """
-    saved = {n: m for n, m in sys.modules.items() if n.startswith("mcp_server")}
+    saved = {n: m for n, m in sys.modules.items() if n.startswith("vmware_monitor.mcp_server")}
     yield
-    for name in [n for n in sys.modules if n.startswith("mcp_server")]:
+    for name in [n for n in sys.modules if n.startswith("vmware_monitor.mcp_server")]:
         del sys.modules[name]
     sys.modules.update(saved)
 
@@ -126,9 +126,9 @@ def test_every_surviving_tool_is_marked_read(monkeypatch):
 def test_skill_env_var_also_works(monkeypatch):
     monkeypatch.delenv("VMWARE_READ_ONLY", raising=False)
     monkeypatch.setenv("VMWARE_MONITOR_READ_ONLY", "true")
-    for name in [m for m in sys.modules if m.startswith("mcp_server")]:
+    for name in [m for m in sys.modules if m.startswith("vmware_monitor.mcp_server")]:
         del sys.modules[name]
-    server = importlib.import_module("mcp_server.server")
+    server = importlib.import_module("vmware_monitor.mcp_server.server")
     assert server.WITHHELD_WRITE_TOOLS == []
     assert _tool_names(server)
 

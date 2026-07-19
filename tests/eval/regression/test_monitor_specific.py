@@ -70,7 +70,7 @@ def test_mcp_exposes_snapshot_listing() -> None:
     docs claimed 8 tools while only 7 existed. Fixed 2026-06-08."""
     import asyncio
 
-    from mcp_server.server import mcp
+    from vmware_monitor.mcp_server.server import mcp
 
     tools = {t.name for t in asyncio.run(mcp.list_tools())}
     assert "vm_list_snapshots" in tools

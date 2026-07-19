@@ -130,14 +130,14 @@ def _check_daemon() -> tuple[bool, str]:
 def _check_mcp_server() -> tuple[bool, str]:
     try:
         import importlib
-        importlib.import_module("mcp_server.server")
+        importlib.import_module("vmware_monitor.mcp_server.server")
         return True, "MCP server module loads OK"
     except ImportError as e:
         return False, f"MCP server import failed: {e}"
 
 
 def _config_read_only() -> bool | None:
-    """Read ``read_only`` from config, mirroring ``mcp_server.server``.
+    """Read ``read_only`` from config, mirroring ``vmware_monitor.mcp_server.server``.
 
     Duplicated rather than imported because importing the server module would
     register every tool and run the gate as a side effect of ``doctor``. The

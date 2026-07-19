@@ -132,12 +132,31 @@ def _install_graph(monkeypatch, *, vm_alarms=(), host_alarms=(), with_cluster=Tr
 
 
 def test_unknown_vm_raises_teaching_error(monkeypatch):
+    """The remedy must name a tool the model can actually call.
+
+    This asserted `list_vms` until v1.9 — an internal ops function, not an MCP
+    tool. The error read as a perfectly good teaching error and this test kept
+    it green, so a model following the instruction called something that does
+    not exist, on the one path where it was already recovering from a failure.
+    Pinned against the live registry now, not a string, so the tool being
+    renamed or removed fails here instead of shipping.
+    """
+    import asyncio
+
+    from vmware_monitor.mcp_server.server import mcp
+
     monkeypatch.setattr(investigate_vm, "find_vm_by_name", lambda si, name: None)
     with pytest.raises(VMNotFoundError) as exc:
         investigate_vm.get_vm_investigation_bundle(object(), "does-not-exist")
     msg = str(exc.value)
     assert "not found" in msg
-    assert "list_vms" in msg  # teaching: tells the operator how to recover
+
+    tool_names = {t.name for t in asyncio.run(mcp.list_tools())}
+    named = {t for t in tool_names if t in msg}
+    assert named, (
+        f"the remedy names no callable tool — message was {msg!r}. A teaching "
+        "error that points at an internal function teaches the model to fail."
+    )
 
 
 def test_bundle_correlates_full_graph(monkeypatch):

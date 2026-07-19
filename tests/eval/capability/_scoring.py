@@ -1,0 +1,204 @@
+"""Scoring primitives shared by this skill's capability evals.
+
+Why this exists
+---------------
+A regression eval answers a yes/no question ("does bug #31 still bite?") and
+must sit at 100%. A capability eval answers a *how well* question ("can a small
+model actually drive this tool surface?") and is expected to sit below 100%
+forever — the number is the product, not the pass/fail.
+
+So every capability eval here does two things:
+
+1. **records a score** into ``_scores.json`` next to this file, so the next
+   release can diff against it rather than re-deriving a feeling; and
+2. **asserts a floor**, deliberately set well under the current score. The floor
+   is a ratchet against collapse, not a quality bar. A test going red here means
+   something fell off a cliff, not that the surface is imperfect.
+
+Do not raise a floor to match a score. The floor's job is to stay boring.
+
+Token estimation
+----------------
+``estimate_tokens`` is a BPE approximation (word/punct segmentation × 0.75), not
+a real tokenizer — none of the family venvs carry ``tiktoken`` and a capability
+eval must not add a dependency to be runnable. It lands within roughly ±15% of
+cl100k on this kind of English-plus-JSON text, which is ample: every budget here
+is a *trend* measurement compared against the same estimator in the previous
+release, and against thresholds chosen with the error bar already in mind.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass, field, replace
+from pathlib import Path
+from typing import Any
+
+SCORES_PATH = Path(__file__).with_name("_scores.json")
+
+_WORDISH = re.compile(r"\w+|[^\w\s]")
+
+
+def estimate_tokens(text: str) -> int:
+    """Approximate BPE token count for ``text``. See module docstring for error bar."""
+    if not text:
+        return 0
+    return int(len(_WORDISH.findall(text)) * 0.75)
+
+
+@dataclass(frozen=True)
+class Score:
+    """One recorded capability measurement.
+
+    ``value``/``maximum`` are the raw numbers; ``pct`` is what release-to-release
+    comparison actually reads. ``detail`` carries the per-item breakdown so a
+    regression in the aggregate can be traced to the item that caused it without
+    re-running anything.
+    """
+
+    name: str
+    value: float
+    maximum: float
+    unit: str = "points"
+    detail: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def pct(self) -> float:
+        if self.maximum == 0:
+            return 0.0
+        return round(100.0 * self.value / self.maximum, 1)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "value": round(self.value, 2),
+            "maximum": round(self.maximum, 2),
+            "unit": self.unit,
+            "pct": self.pct,
+            "detail": self.detail,
+        }
+
+
+@dataclass
+class ScoreBoard:
+    """Session-scoped collector.
+
+    The dataclass itself is mutable by necessity — pytest hands results in one
+    test at a time — but ``add`` never mutates a :class:`Score`, and ``records``
+    is replaced rather than appended in place, so no caller can observe a
+    half-updated board.
+    """
+
+    records: tuple[Score, ...] = ()
+
+    def add(self, score: Score) -> Score:
+        self.records = (*self.records, score)
+        return score
+
+    def as_dict(self) -> dict[str, Any]:
+        return {s.name: s.as_dict() for s in sorted(self.records, key=lambda s: s.name)}
+
+    def write(self, path: Path = SCORES_PATH) -> None:
+        if not self.records:
+            return
+        payload = {
+            "_comment": (
+                "Capability eval scores. Regenerate with: pytest -m capability. "
+                "These are tracked trends, not pass/fail gates — see _scoring.py."
+            ),
+            "scores": self.as_dict(),
+        }
+        path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+def previous_scores(path: Path = SCORES_PATH) -> dict[str, Any]:
+    """Load the last recorded run, or ``{}`` on a first run / unreadable file."""
+    try:
+        return json.loads(path.read_text()).get("scores", {})
+    except (OSError, ValueError):
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# Text probes reused by several evals
+# ---------------------------------------------------------------------------
+
+#: Phrases that signal a description told the agent *when* to reach for this
+#: tool rather than a sibling. Routing is the single hardest thing for a small
+#: model to infer, because inferring it requires holding the whole tool list.
+WHEN_MARKERS = (
+    "use this",
+    "use it",
+    "use for",
+    "use when",
+    "instead of",
+    " instead",
+    "prefer ",
+    "before ",
+    "first",
+    "start here",
+    "rather than",
+    "for detail",
+    "drill into",
+    "follow up",
+    "then ",
+)
+
+#: Phrases that signal the description stated what comes back.
+WHAT_MARKERS = ("returns", "return ", "yields", "reports", "->", "→")
+
+#: Phrases that signal a caveat — the class of information a strong model infers
+#: from experience and a weak model simply never learns.
+GOTCHA_MARKERS = (
+    "note",
+    "only",
+    "requires",
+    "does not",
+    "do not",
+    "cannot",
+    "never",
+    "always",
+    "may ",
+    "must ",
+    "caution",
+    "warning",
+    "n/a",
+    "point-in-time",
+    "no trending",
+    "not supported",
+    "unavailable",
+    "beware",
+    "careful",
+    "irreversible",
+    "cannot be undone",
+    "double",
+    "confirm",
+    "dry-run",
+    "dry run",
+    "skip",
+    "fall back",
+    "fallback",
+    "if the",
+    "when the",
+    "unless",
+    "except",
+)
+
+
+def has_any(text: str, markers: tuple[str, ...]) -> bool:
+    low = text.lower()
+    return any(m in low for m in markers)
+
+
+def documented_args(description: str, schema: dict[str, Any]) -> tuple[int, int]:
+    """Return ``(documented, total)`` schema properties named in ``description``.
+
+    An undocumented parameter is one a model must guess the meaning of from its
+    name alone. That is survivable for ``target`` and not survivable for
+    ``top_n`` or ``folder_filter``.
+    """
+    props = tuple((schema or {}).get("properties", {}))
+    if not props:
+        return (0, 0)
+    low = description.lower()
+    return (sum(1 for p in props if p.lower() in low), len(props))

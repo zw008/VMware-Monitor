@@ -66,14 +66,14 @@ def test_no_destructive_code_in_vmware_monitor() -> None:
 
 @pytest.mark.unit
 def test_no_destructive_code_in_mcp_server() -> None:
-    """Verify no destructive function definitions or API calls in mcp_server/."""
+    """Verify no destructive function definitions or API calls in vmware_monitor/mcp_server/."""
     for pattern in DESTRUCTIVE_PATTERNS:
         result = subprocess.run(
-            ["grep", "-rn", "--include=*.py", pattern, "mcp_server/"],
+            ["grep", "-rn", "--include=*.py", pattern, "vmware_monitor/mcp_server/"],
             capture_output=True,
             text=True,
             cwd=REPO_ROOT,
         )
         assert result.stdout == "", (
-            f"Destructive pattern '{pattern}' found in mcp_server/:\n{result.stdout}"
+            f"Destructive pattern '{pattern}' found in vmware_monitor/mcp_server/:\n{result.stdout}"
         )

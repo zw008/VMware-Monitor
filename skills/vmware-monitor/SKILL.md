@@ -211,7 +211,7 @@ config.yaml) still applies, and the gate verifies at start-up that zero write
 tools are exposed rather than taking this document's word for it. The same
 variable withholds write tools across every companion skill, so a whole-estate
 audit posture is one setting. `vmware-monitor doctor` reports the current state
-and its source.
+and its source. Running with local or small models? See [`references/agent-guardrails.md`](references/agent-guardrails.md).
 
 ## CLI Quick Reference
 

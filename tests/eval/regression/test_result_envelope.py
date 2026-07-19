@@ -548,7 +548,7 @@ def test_unknowable_total_stays_null_rather_than_guessed(monkeypatch, tool):
 
 def test_no_mcp_tool_is_annotated_as_a_bare_list():
     """A ``-> list[dict]`` annotation is the shape this work removed."""
-    import mcp_server.server as srv
+    import vmware_monitor.mcp_server.server as srv
 
     offenders = []
     for name in ALL:
@@ -560,7 +560,7 @@ def test_no_mcp_tool_is_annotated_as_a_bare_list():
 
 
 def test_all_nineteen_tools_are_registered_with_fastmcp():
-    import mcp_server.server as srv
+    import vmware_monitor.mcp_server.server as srv
 
     registered = {t.name for t in asyncio.run(srv.mcp.list_tools())}
     missing = sorted(set(ALL) - registered)
@@ -569,7 +569,7 @@ def test_all_nineteen_tools_are_registered_with_fastmcp():
 
 def test_mcp_error_payload_is_a_plain_dict(monkeypatch):
     """Errors share the dict shape, so a failure never reads as an empty page."""
-    from mcp_server.server import _catch_tool_errors
+    from vmware_monitor.mcp_server.server import _catch_tool_errors
 
     def boom() -> dict:
         raise RuntimeError("nope")

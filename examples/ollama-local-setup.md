@@ -21,7 +21,7 @@ ollama pull qwen2.5-coder:7b
 ## Step 2: Run with Aider + Ollama
 
 ```bash
-aider --conventions codex-skill/AGENTS.md --model ollama/qwen2.5-coder:14b
+aider --conventions skills/vmware-monitor/SKILL.md --model ollama/qwen2.5-coder:14b
 ```
 
 Example queries:

@@ -104,7 +104,7 @@ def test_list_networks_returns_name_and_vm_count() -> None:
 
 
 def test_new_mcp_tools_registered_and_read_only() -> None:
-    from mcp_server.server import mcp
+    from vmware_monitor.mcp_server.server import mcp
 
     tools = {t.name: t for t in asyncio.run(mcp.list_tools())}
     for name in ("get_host_sensors", "get_host_services", "list_all_networks"):
@@ -116,7 +116,7 @@ def test_new_mcp_tools_registered_and_read_only() -> None:
 def test_mcp_get_host_services_does_not_recurse(monkeypatch) -> None:
     """The MCP tool shares a name with the ops function; the import is aliased
     so the tool delegates to ops instead of calling itself."""
-    import mcp_server.server as srv
+    import vmware_monitor.mcp_server.server as srv
 
     sentinel = [{"host": "esxi-1", "service": "ntpd", "running": True}]
     monkeypatch.setattr(srv, "_get_connection", lambda target=None: MagicMock())

@@ -48,7 +48,7 @@ ALL_TOOLS: list[tuple[str, dict]] = [
 @pytest.fixture()
 def broken_config(monkeypatch):
     """Point the MCP server at a nonexistent config and reset its cache."""
-    import mcp_server.server as srv
+    import vmware_monitor.mcp_server.server as srv
 
     monkeypatch.setenv("VMWARE_MONITOR_CONFIG", "/nonexistent/vmware-monitor.yaml")
     monkeypatch.setattr(srv, "_conn_mgr", None)
@@ -90,13 +90,13 @@ def test_tool_error_payload_shape_matches_annotation(broken_config, tool_name, a
 def test_catch_tool_errors_uses_real_tool_name(caplog):
     """_safe_error must receive the decorated function's real name (was the
     literal "monitor" for all 8 tools)."""
-    from mcp_server.server import _catch_tool_errors
+    from vmware_monitor.mcp_server.server import _catch_tool_errors
 
     def my_special_tool() -> dict:
         raise RuntimeError("boom")
 
     wrapped = _catch_tool_errors(my_special_tool)
-    with caplog.at_level(logging.ERROR, logger="mcp_server.server"):
+    with caplog.at_level(logging.ERROR, logger="vmware_monitor.mcp_server.server"):
         out = wrapped()
     assert isinstance(out, dict) and "error" in out
     assert any("my_special_tool" in r.getMessage() for r in caplog.records)

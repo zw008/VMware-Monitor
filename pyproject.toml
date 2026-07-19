@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vmware-monitor"
-version = "1.8.1"
+version = "1.8.2"
 description = "VMware vCenter/ESXi read-only monitoring tool. No destructive operations — code-level enforced."
 readme = "README.md"
 license = "MIT"
@@ -31,10 +31,10 @@ dev = [
 
 [project.scripts]
 vmware-monitor = "vmware_monitor.cli:app"
-vmware-monitor-mcp = "mcp_server.server:main"
+vmware-monitor-mcp = "vmware_monitor.mcp_server.server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["vmware_monitor", "mcp_server"]
+packages = ["vmware_monitor"]
 
 [tool.ruff]
 line-length = 100
@@ -58,4 +58,7 @@ testpaths = ["tests"]
 markers = [
     "unit: Unit tests",
     "integration: Integration tests (require vCenter)",
+    "capability: Capability evals — scored trends, not pass/fail gates. Excluded from the default run (they measure quality, so <100% is expected and must not read as a broken build). Run them with: pytest -m capability",
 ]
+# Capability evals are opt-in; see the marker description above.
+addopts = "-m 'not capability'"
