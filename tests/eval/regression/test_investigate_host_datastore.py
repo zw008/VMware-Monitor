@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 
 import pytest
 from pyVmomi import vim
+from vmware_policy import paginated
 
 from vmware_monitor.ops import _correlate, investigate_datastore, investigate_host
 from vmware_monitor.ops.investigate_datastore import DatastoreNotFoundError
@@ -111,7 +112,11 @@ def _install_host(monkeypatch, *, host_alarms=(), with_cluster=True):
     monkeypatch.setattr(investigate_host, "_collect_objects", fake_collect_objects)
     monkeypatch.setattr(_correlate, "_collect_objects", fake_collect_objects)
     monkeypatch.setattr(_correlate, "entity_timeline", lambda si, ents, hours=24: [])
-    monkeypatch.setattr(investigate_host, "get_host_performance", lambda si, host_name, limit: [])
+    monkeypatch.setattr(
+        investigate_host,
+        "get_host_performance",
+        lambda si, host_name, limit: paginated([], limit=limit, total=0),
+    )
     return counter
 
 

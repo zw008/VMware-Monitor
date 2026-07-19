@@ -35,7 +35,7 @@ class _FakeSI:
 
 
 def test_active_sessions_no_permission_returns_explanatory_row():
-    rows = get_active_sessions(_FakeSI())
+    rows = get_active_sessions(_FakeSI())["items"]
     assert len(rows) == 1
     assert "Sessions privilege" in rows[0]["note"]
     assert rows[0]["user_name"] == "N/A"

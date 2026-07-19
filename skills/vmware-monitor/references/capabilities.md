@@ -2,14 +2,53 @@
 
 Detailed feature tables for `vmware-monitor`.
 
+## List result envelope
+
+The 19 list-returning MCP tools — `list_esxi_hosts`, `list_all_datastores`,
+`list_all_clusters`, `list_all_networks`, `get_alarms`, `get_events`,
+`get_host_sensors`, `get_host_services`, `host_log_scan`, `active_tasks`,
+`active_sessions`, `datastore_capacity`, `resource_pool_usage`,
+`certificate_status`, `license_status`, `ntp_status`, `host_performance`,
+`vm_performance`, `vm_list_snapshots` — return the family list envelope rather
+than a bare array:
+
+```json
+{"items": [...], "returned": 50, "limit": 50, "total": 213,
+ "truncated": true, "hint": "Showing 50 of 213. Raise limit or narrow the query..."}
+```
+
+| Key | Meaning |
+|-----|---------|
+| `items` | The rows, in the tool's documented order |
+| `returned` | `len(items)` — check this before claiming "no data" |
+| `limit` | The limit that produced this page; `null` when unlimited |
+| `total` | Real collection size, or `null` when the backing API does not report one |
+| `truncated` | `true` = more rows exist behind this page; `false` = this is complete |
+| `hint` | What to do about truncation; `null` when complete |
+
+Two tools report `total: null` on purpose: `get_events` (vCenter's event
+collector applies its own bounds) and `host_log_scan` (only the last N lines
+per log are read). Everywhere else the total is a real count taken before the
+limit was applied, which is what lets a full page be recognised as complete
+instead of flagged as possibly-truncated.
+
+The envelope adds ~30 tokens to a response. It exists because a bare list gave
+smaller models nothing to distinguish a complete answer from page one, and they
+sometimes resolved that ambiguity as "no data was returned"
+(VMware-AIops issue #31).
+
+Tools with purpose-built return objects — `list_virtual_machines`, `vm_info`,
+`snapshot_aging`, `cluster_health_summary`, `cross_vcenter_attention`, and the
+three `*_investigation_bundle` tools — are unaffected.
+
 ## Automation Level Reference
 
 Each operation is classified by autonomy level per the Enterprise Harness Engineering framework. **vmware-monitor is L1/L2 only by design** — no write operations exist in the codebase, enforced at the test level.
 
 | Level | Meaning | Agent autonomy | Examples in this skill |
 |:-:|---|---|---|
-| **L1** | Read-only, raw data | Always auto-run | `list_vms`, `list_hosts`, `list_alarms`, `list_events`, `list_datastores`, `list_clusters`, `host_status` |
-| **L2** | Read + analysis / recommendation | Always auto-run | scheduled scan reports, log pattern matching (error/fail/critical/panic/timeout), alarm correlation, daemon-driven webhook digests |
+| **L1** | Read-only, raw data | Always auto-run | `list_virtual_machines`, `list_esxi_hosts`, `get_alarms`, `get_events`, `list_all_datastores`, `list_all_clusters`, `host_performance` |
+| **L2** | Read + analysis / recommendation | Always auto-run | `cluster_health_summary`, `cross_vcenter_attention`, `snapshot_aging`, the three `*_investigation_bundle` tools, scheduled scan reports, log pattern matching (error/fail/critical/panic/timeout), alarm correlation, daemon-driven webhook digests |
 | **L3** | Single write — user must approve | *N/A* | — *(use [vmware-aiops](https://github.com/zw008/VMware-AIops) for write operations)* |
 | **L4** | Multi-step plan / apply workflow | *N/A* | — *(use [vmware-pilot](https://github.com/zw008/VMware-Pilot) for orchestration)* |
 | **L5** | Auto-remediation from learned pattern | *N/A* | — *(remediation is out of scope by design)* |
@@ -57,7 +96,7 @@ pattern — the model never sees raw inventory.
 | List Clusters | Y | N | Host count, DRS/HA status |
 | List Networks | Y | Y | Network name, associated VM count, accessibility — CLI `inventory networks`, MCP `list_all_networks` |
 
-### `list_vms` — input parameters
+### `list_virtual_machines` — input parameters
 
 | Parameter | Type | Default | Behavior |
 |-----------|------|---------|----------|
@@ -68,7 +107,7 @@ pattern — the model never sees raw inventory.
 | `fields` | list[str] (optional) | auto | Subset of: `name`, `power_state`, `cpu`, `memory_mb`, `guest_os`, `ip_address`, `host`, `uuid`, `tools_status`, `folder_path` |
 | `folder_filter` | str (optional) | None | Case-insensitive substring match against `folder_path` (CLI `--folder-filter`, MCP `folder_filter`). Example: `folder_filter="Production"` returns VMs anywhere under any folder whose path contains "production" (including nested subfolders like `/Datacenters/Production/Web Tier`). |
 
-### `list_vms` — response fields
+### `list_virtual_machines` — response fields
 
 Each VM dict in the `vms` array contains:
 
@@ -93,6 +132,22 @@ Each VM dict in the `vms` array contains:
 | Event/Log Query | Y | Y | Filter by time range, severity; 50+ event types |
 | Hardware Sensors | Y | Y | Per-sensor `type` (temperature/voltage/fan...), reading, unit, and health `status` (green/yellow/red) — CLI `health sensors`, MCP `get_host_sensors` |
 | Host Services | Y | Y | hostd, vpxa running/stopped status — CLI `health services`, MCP `get_host_services` |
+
+### Alarm/Event `suggested_actions` example
+
+`get_alarms` and `get_events` results include a `suggested_actions` list — each
+item is a ready-to-use hint pointing to the correct companion skill and tool:
+
+```json
+{
+  "alarm_name": "VM CPU Ready High",
+  "entity_name": "prod-db-01",
+  "suggested_actions": [
+    "vmware-aiops: acknowledge_vcenter_alarm(entity_name='prod-db-01', alarm_name='VM CPU Ready High')",
+    "vmware-aiops: reset_vcenter_alarm(entity_name='prod-db-01', alarm_name='VM CPU Ready High')"
+  ]
+}
+```
 
 ### Monitored Event Types
 

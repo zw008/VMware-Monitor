@@ -282,7 +282,7 @@ def test_get_vm_performance_skips_powered_off_without_lazy_access():
             (_vm_proxy("vm-web-02"), {"name": "web-02", "runtime.powerState": "poweredOff"}),
         ]
     }
-    rows = performance.get_vm_performance(_si(fixtures, perf_manager=_FakePerfManager()))
+    rows = performance.get_vm_performance(_si(fixtures, perf_manager=_FakePerfManager()))["items"]
     assert len(rows) == 1                     # powered-off skipped via batched prop
     assert rows[0]["name"] == "web-01"
     assert rows[0]["cpu_usage_pct"] == 50.0
@@ -297,7 +297,7 @@ def test_get_vm_performance_name_filter():
     }
     rows = performance.get_vm_performance(
         _si(fixtures, perf_manager=_FakePerfManager()), vm_name="b"
-    )
+    )["items"]
     assert [r["name"] for r in rows] == ["b"]
 
 
@@ -335,7 +335,7 @@ def test_get_host_hardware_status_batches_health_runtime():
             (_NoLazyMO("host:esx-02"), {"name": "esx-02", "runtime.healthSystemRuntime": None}),
         ]
     }
-    rows = health.get_host_hardware_status(_si(fixtures))
+    rows = health.get_host_hardware_status(_si(fixtures))["items"]
     assert len(rows) == 1
     assert rows[0]["host"] == "esx-01"
     assert rows[0]["sensor_name"] == "CPU Temp"

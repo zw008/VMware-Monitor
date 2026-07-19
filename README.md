@@ -9,6 +9,8 @@ English | [中文](README-CN.md)
 
 **Read-only** VMware vCenter/ESXi monitoring — 27 tools, code-level safety. No destructive operations exist in this codebase.
 
+- **Read-only by design — and provable** (v1.8.0): all 27 MCP tools are read and there are 0 writes; with `VMWARE_READ_ONLY=true` the family read-only gate verifies that at startup instead of taking this README's word for it. See [Read-Only Mode](#read-only-mode).
+
 > **Why a separate repository?** VMware Monitor is fully independent from [VMware-AIops](https://github.com/zw008/VMware-AIops). Safety is enforced at the **code level**: no power off, delete, create, reconfigure, snapshot-create/revert/delete, clone, or migrate functions exist in this codebase. Not just prompt constraints — zero destructive code paths.
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-vmware--monitor-orange)](https://clawhub.ai/skills/vmware-monitor)
@@ -20,12 +22,17 @@ English | [中文](README-CN.md)
 
 | Skill | Scope | Tools | Install |
 |-------|-------|:-----:|---------|
-| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** ⭐ entry point | VM lifecycle, deployment, guest ops, clusters | 31 | `uv tool install vmware-aiops` |
+| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** ⭐ entry point | VM lifecycle, deployment, guest ops, clusters | 49 | `uv tool install vmware-aiops` |
 | **[vmware-storage](https://github.com/zw008/VMware-Storage)** | Datastores, iSCSI, vSAN | 11 | `uv tool install vmware-storage` |
 | **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu Namespaces, TKC cluster lifecycle | 20 | `uv tool install vmware-vks` |
-| **[vmware-nsx](https://github.com/zw008/VMware-NSX)** | NSX networking: segments, gateways, NAT, IPAM | 31 | `uv tool install vmware-nsx-mgmt` |
-| **[vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security)** | DFW microsegmentation, security groups, Traceflow | 20 | `uv tool install vmware-nsx-security` |
-| **[vmware-aria](https://github.com/zw008/VMware-Aria)** | Aria Ops metrics, alerts, capacity planning | 18 | `uv tool install vmware-aria` |
+| **[vmware-nsx](https://github.com/zw008/VMware-NSX)** | NSX networking: segments, gateways, NAT, IPAM | 33 | `uv tool install vmware-nsx-mgmt` |
+| **[vmware-nsx-security](https://github.com/zw008/VMware-NSX-Security)** | DFW microsegmentation, security groups, Traceflow | 21 | `uv tool install vmware-nsx-security` |
+| **[vmware-aria](https://github.com/zw008/VMware-Aria)** | Aria Ops metrics, alerts, capacity planning | 28 | `uv tool install vmware-aria` |
+| **[vmware-avi](https://github.com/zw008/VMware-AVI)** | AVI (NSX ALB) load balancing, AKO on Kubernetes | 28 | `uv tool install vmware-avi` |
+| **[vmware-harden](https://github.com/zw008/VMware-Harden)** | Compliance baselines, drift detection (read-only) | 6 | `uv tool install vmware-harden` |
+| **[vmware-log-insight](https://github.com/zw008/VMware-Log-Insight)** | Centralized syslog search, aggregation, alerts | 7 | `uv tool install vmware-log-insight` |
+| **[vmware-debug](https://github.com/zw008/VMware-Debug)** | Incident timeline correlation, root cause | 2 | `uv tool install vmware-debug` |
+| **[vmware-pilot](https://github.com/zw008/VMware-Pilot)** | Multi-step workflow orchestration, approval gates | 13 | `uv tool install vmware-pilot` |
 
 ## ⚡ Quick Investigation Reports
 
@@ -198,6 +205,35 @@ For these operations, use the full [VMware-AIops](https://github.com/zw008/VMwar
 
 ---
 
+## Read-Only Mode
+
+vmware-monitor is read-only by design — all 27 MCP tools carry the `[READ]` marker and there are 0 write tools, so there is no write surface to switch off. What v1.8.0 adds is **proof**: set `VMWARE_READ_ONLY=true` and the family read-only gate enumerates the tool registry at startup and verifies that zero write tools are exposed. "Non-destructive" stops being a claim in this README and becomes an assertion the server checks before it serves a single request.
+
+That matters most as a regression guard. The gate treats anything not provably read-only as a write — a tool added later without a `[READ]` marker, or one carrying `[WRITE]`, is removed from the registry rather than quietly inherited by the model. Off by default, and fail-closed: if the mode is requested but cannot be guaranteed (unreadable registry, unexpected `mcp` version), the server refuses to start rather than running open.
+
+```json
+{
+  "mcpServers": {
+    "vmware-monitor": {
+      "command": "vmware-monitor",
+      "args": ["mcp"],
+      "env": { "VMWARE_READ_ONLY": "true" }
+    }
+  }
+}
+```
+
+- Per-skill override: `VMWARE_MONITOR_READ_ONLY=true` (takes precedence over the family-wide `VMWARE_READ_ONLY`)
+- Config alternative: `read_only: true` in `~/.vmware-monitor/config.yaml`
+
+Precedence: per-skill env → family env → config → off.
+
+`VMWARE_READ_ONLY` is family-wide, and that is the point of setting it here even though this skill has nothing to strip: the same variable removes every write tool from the write-capable siblings (aiops, storage, vks, nsx, ...), so one setting puts the whole estate into an audit posture. On this server nothing is logged as withheld because nothing is — the gate's empty result *is* the assertion; write-capable siblings log `Read-only mode active ... withheld N write tool(s)` instead.
+
+Running with local or small models? See [`skills/vmware-monitor/references/agent-guardrails.md`](skills/vmware-monitor/references/agent-guardrails.md).
+
+---
+
 ## Common Workflows
 
 ### Daily Health Check
@@ -275,7 +311,7 @@ vCenter may be under heavy load. Try targeting a specific ESXi host directly ins
 
 ### MCP Server Integrations
 
-The vmware-monitor MCP server works with **any MCP-compatible agent or tool**. Ready-to-use configuration templates are in [`examples/mcp-configs/`](examples/mcp-configs/). All 11 tools are **read-only** — code-level enforced safety.
+The vmware-monitor MCP server works with **any MCP-compatible agent or tool**. Ready-to-use configuration templates are in [`examples/mcp-configs/`](examples/mcp-configs/). All 27 tools are **read-only** — code-level enforced safety.
 
 | Agent / Tool | Local Model Support | Config Template | Integration Guide |
 |-------------|:-------------------:|-----------------|-------------------|
@@ -748,8 +784,8 @@ VMware-Monitor/
 
 | Skill | Scope | Tools | Install |
 |-------|-------|:-----:|---------|
-| **[vmware-monitor](https://github.com/zw008/VMware-Monitor)** | Read-only monitoring, alarms, events | 8 | `uv tool install vmware-monitor` |
-| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** | VM lifecycle, deployment, guest ops, clusters | 33 | `uv tool install vmware-aiops` |
+| **[vmware-monitor](https://github.com/zw008/VMware-Monitor)** | Read-only monitoring, alarms, events | 27 | `uv tool install vmware-monitor` |
+| **[vmware-aiops](https://github.com/zw008/VMware-AIops)** | VM lifecycle, deployment, guest ops, clusters | 49 | `uv tool install vmware-aiops` |
 | **[vmware-storage](https://github.com/zw008/VMware-Storage)** | Datastores, iSCSI, vSAN | 11 | `uv tool install vmware-storage` |
 | **[vmware-vks](https://github.com/zw008/VMware-VKS)** | Tanzu Namespaces, TKC cluster lifecycle | 20 | `uv tool install vmware-vks` |
 

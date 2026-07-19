@@ -61,7 +61,7 @@ def perf_hosts(
     from vmware_monitor.ops.performance import get_host_performance
 
     si, _, tgt = get_connection(target, config)
-    rows = get_host_performance(si, host_name=host, limit=limit)
+    rows = get_host_performance(si, host_name=host, limit=limit)["items"]
     audit.log_query(target=tgt, resource="host_performance", query_type="get_host_performance")
     if not rows:
         console.print("[yellow]No connected host exposed real-time metrics.[/]")
@@ -99,7 +99,7 @@ def perf_vms(
     from vmware_monitor.ops.performance import get_vm_performance
 
     si, _, tgt = get_connection(target, config)
-    rows = get_vm_performance(si, vm_name=vm, limit=limit)
+    rows = get_vm_performance(si, vm_name=vm, limit=limit)["items"]
     audit.log_query(target=tgt, resource="vm_performance", query_type="get_vm_performance")
     if not rows:
         console.print("[yellow]No powered-on VM exposed real-time metrics.[/]")
@@ -140,7 +140,7 @@ def capacity_datastores(
     from vmware_monitor.ops.capacity import get_datastore_capacity
 
     si, _, tgt = get_connection(target, config)
-    rows = get_datastore_capacity(si, limit=limit)
+    rows = get_datastore_capacity(si, limit=limit)["items"]
     audit.log_query(target=tgt, resource="datastore_capacity", query_type="get_datastore_capacity")
     table = Table(title="Datastore Capacity & Over-commit")
     table.add_column("Name", style="cyan")
@@ -174,7 +174,7 @@ def capacity_pools(
     from vmware_monitor.ops.capacity import get_resource_pool_usage
 
     si, _, tgt = get_connection(target, config)
-    rows = get_resource_pool_usage(si, limit=limit)
+    rows = get_resource_pool_usage(si, limit=limit)["items"]
     audit.log_query(target=tgt, resource="resource_pools", query_type="get_resource_pool_usage")
     if not rows:
         console.print("[yellow]No resource pools found.[/]")
@@ -207,7 +207,7 @@ def infra_certs(
     from vmware_monitor.ops.infra_health import get_certificate_status
 
     si, _, tgt = get_connection(target, config)
-    rows = get_certificate_status(si, warn_days=warn_days, limit=limit)
+    rows = get_certificate_status(si, warn_days=warn_days, limit=limit)["items"]
     audit.log_query(target=tgt, resource="certificates", query_type="get_certificate_status")
     table = Table(title=f"ESXi Certificates (warn < {warn_days}d)")
     table.add_column("Host", style="cyan")
@@ -227,7 +227,7 @@ def infra_licenses(target: TargetOption = None, config: ConfigOption = None) -> 
     from vmware_monitor.ops.infra_health import get_license_status
 
     si, _, tgt = get_connection(target, config)
-    rows = get_license_status(si)
+    rows = get_license_status(si)["items"]
     audit.log_query(target=tgt, resource="licenses", query_type="get_license_status")
     if not rows:
         console.print("[yellow]No licenses returned.[/]")
@@ -253,7 +253,7 @@ def infra_ntp(
     from vmware_monitor.ops.infra_health import get_ntp_status
 
     si, _, tgt = get_connection(target, config)
-    rows = get_ntp_status(si, host_name=host)
+    rows = get_ntp_status(si, host_name=host)["items"]
     audit.log_query(target=tgt, resource="ntp", query_type="get_ntp_status")
     table = Table(title="NTP Configuration (live offset not exposed by SOAP API)")
     table.add_column("Host", style="cyan")
@@ -332,7 +332,7 @@ def activity_tasks(
     from vmware_monitor.ops.activity import get_active_tasks
 
     si, _, tgt = get_connection(target, config)
-    rows = get_active_tasks(si, include_recent=all_recent, limit=limit)
+    rows = get_active_tasks(si, include_recent=all_recent, limit=limit)["items"]
     audit.log_query(target=tgt, resource="tasks", query_type="get_active_tasks")
     if not rows:
         console.print("[green]No tasks.[/]")
@@ -366,7 +366,7 @@ def activity_sessions(
     from vmware_monitor.ops.activity import get_active_sessions
 
     si, _, tgt = get_connection(target, config)
-    rows = get_active_sessions(si, limit=limit)
+    rows = get_active_sessions(si, limit=limit)["items"]
     audit.log_query(target=tgt, resource="sessions", query_type="get_active_sessions")
     if rows and rows[0].get("user_name") == "N/A" and "note" in rows[0]:
         console.print(f"[yellow]{rows[0]['note']}[/]")

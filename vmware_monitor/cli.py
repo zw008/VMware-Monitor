@@ -134,7 +134,7 @@ def inventory_hosts(target: TargetOption = None, config: ConfigOption = None) ->
     from vmware_monitor.ops.inventory import list_hosts
 
     si, _, tgt = _get_connection(target, config)
-    hosts = list_hosts(si)
+    hosts = list_hosts(si)["items"]
     _audit.log_query(target=tgt, resource="esxi_hosts", query_type="list_hosts")
     table = Table(title="ESXi Hosts")
     table.add_column("Name", style="cyan")
@@ -161,7 +161,7 @@ def inventory_datastores(target: TargetOption = None, config: ConfigOption = Non
     from vmware_monitor.ops.inventory import list_datastores
 
     si, _, tgt = _get_connection(target, config)
-    stores = list_datastores(si)
+    stores = list_datastores(si)["items"]
     _audit.log_query(target=tgt, resource="datastores", query_type="list_datastores")
     table = Table(title="Datastores")
     table.add_column("Name", style="cyan")
@@ -189,7 +189,7 @@ def inventory_clusters(target: TargetOption = None, config: ConfigOption = None)
     from vmware_monitor.ops.inventory import list_clusters
 
     si, _, tgt = _get_connection(target, config)
-    clusters = list_clusters(si)
+    clusters = list_clusters(si)["items"]
     _audit.log_query(target=tgt, resource="clusters", query_type="list_clusters")
     table = Table(title="Clusters")
     table.add_column("Name", style="cyan")
@@ -213,7 +213,7 @@ def inventory_networks(target: TargetOption = None, config: ConfigOption = None)
     from vmware_monitor.ops.inventory import list_networks
 
     si, _, tgt = _get_connection(target, config)
-    networks = list_networks(si)
+    networks = list_networks(si)["items"]
     _audit.log_query(target=tgt, resource="networks", query_type="list_networks")
     table = Table(title="Networks")
     table.add_column("Name", style="cyan")
@@ -238,7 +238,7 @@ def health_alarms(target: TargetOption = None, config: ConfigOption = None) -> N
     from vmware_monitor.ops.health import get_active_alarms
 
     si, _, tgt = _get_connection(target, config)
-    alarms = get_active_alarms(si)
+    alarms = get_active_alarms(si)["items"]
     _audit.log_query(target=tgt, resource="alarms", query_type="get_active_alarms")
     if not alarms:
         console.print("[green]No active alarms.[/]")
@@ -271,7 +271,7 @@ def health_events(
     from vmware_monitor.ops.health import get_recent_events
 
     si, _, tgt = _get_connection(target, config)
-    events = get_recent_events(si, hours=hours, severity=severity)
+    events = get_recent_events(si, hours=hours, severity=severity)["items"]
     _audit.log_query(target=tgt, resource="events", query_type="get_recent_events")
     if not events:
         console.print(f"[green]No events above '{severity}' in the last {hours}h.[/]")
@@ -292,7 +292,7 @@ def health_sensors(target: TargetOption = None, config: ConfigOption = None) -> 
     from vmware_monitor.ops.health import get_host_hardware_status
 
     si, _, tgt = _get_connection(target, config)
-    sensors = get_host_hardware_status(si)
+    sensors = get_host_hardware_status(si)["items"]
     _audit.log_query(target=tgt, resource="hardware_sensors", query_type="get_host_hardware_status")
     if not sensors:
         console.print("[green]No hardware sensor data available.[/]")
@@ -331,7 +331,7 @@ def health_services(
     from vmware_monitor.ops.health import get_host_services
 
     si, _, tgt = _get_connection(target, config)
-    services = get_host_services(si, host_name=host)
+    services = get_host_services(si, host_name=host)["items"]
     _audit.log_query(target=tgt, resource="host_services", query_type="get_host_services")
     if not services:
         console.print("[yellow]No host services found.[/]")
@@ -385,7 +385,7 @@ def vm_snapshot_list(
     from vmware_monitor.ops.vm_info import list_snapshots
 
     si, _, tgt = _get_connection(target, config)
-    snaps = list_snapshots(si, vm_name)
+    snaps = list_snapshots(si, vm_name)["items"]
     _audit.log_query(target=tgt, resource=vm_name, query_type="list_snapshots")
     if not snaps:
         console.print("[yellow]No snapshots found.[/]")

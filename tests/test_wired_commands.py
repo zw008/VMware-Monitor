@@ -76,7 +76,7 @@ def test_get_host_services_filters_by_host_name() -> None:
         patch("vmware_monitor.ops.health._collect", return_value=collected),
         patch("vmware_monitor.ops.health._collect_objects", return_value=boundary),
     ):
-        rows = get_host_services(MagicMock(), host_name="esxi-2")
+        rows = get_host_services(MagicMock(), host_name="esxi-2")["items"]
     assert [r["host"] for r in rows] == ["esxi-2"]
     assert rows[0]["service"] == "ntpd"
     assert rows[0]["running"] is True
@@ -96,7 +96,7 @@ def test_list_networks_returns_name_and_vm_count() -> None:
         "vmware_monitor.ops.inventory._collect",
         return_value=[(MagicMock(), props)],
     ):
-        rows = list_networks(MagicMock())
+        rows = list_networks(MagicMock())["items"]
     assert rows == [{"name": "VM Network", "vm_count": 2, "accessible": True}]
 
 

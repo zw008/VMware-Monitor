@@ -43,4 +43,4 @@ aider --conventions codex-skill/AGENTS.md --model ollama/qwen2.5-coder:32b
 
 ## Safety Note
 
-All 8 MCP tools are **read-only**. No destructive operations exist in this codebase.
+All 27 MCP tools are **read-only**. No destructive operations exist in this codebase.

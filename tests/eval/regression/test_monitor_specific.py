@@ -38,7 +38,7 @@ def test_hardware_status_reads_healthstate_not_sensortype() -> None:
     # PropertyCollector instead of walking a ContainerView with lazy access.
     collected = [(MagicMock(), {"name": "esxi-1", "runtime.healthSystemRuntime": runtime_health})]
     with patch("vmware_monitor.ops.health._collect", return_value=collected):
-        rows = get_host_hardware_status(MagicMock())
+        rows = get_host_hardware_status(MagicMock())["items"]
 
     assert rows, "expected one sensor row"
     assert rows[0]["status"] == "green", (

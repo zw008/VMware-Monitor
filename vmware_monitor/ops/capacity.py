@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pyVmomi import vim
-from vmware_policy import sanitize
+from vmware_policy import paginated, sanitize
 
 from vmware_monitor.ops._collect import _collect
 
@@ -45,10 +45,12 @@ _RP_PROPS = [
 def get_datastore_capacity(
     si: ServiceInstance,
     limit: int | None = None,
-) -> list[dict]:
+) -> dict:
     """Per-datastore capacity with thin-provisioning over-commit.
 
-    Returns name, type, capacity_gb, free_gb, committed_gb (allocated),
+    Returns the family list envelope with a real ``total`` (every datastore is
+    collected before ``limit`` is applied). Each row has
+    name, type, capacity_gb, free_gb, committed_gb (allocated),
     provisioned_gb (committed + uncommitted thin reservations), used_pct, and
     overcommit_pct (provisioned / capacity * 100). overcommit_pct > 100 means
     more space is promised to VMs than the datastore physically has — a thin
@@ -84,18 +86,21 @@ def get_datastore_capacity(
             }
         )
     results.sort(key=lambda x: x["overcommit_pct"], reverse=True)
+    total = len(results)
     if limit is not None:
         results = results[:limit]
-    return results
+    return paginated(results, limit=limit, total=total)
 
 
 def get_resource_pool_usage(
     si: ServiceInstance,
     limit: int | None = None,
-) -> list[dict]:
+) -> dict:
     """Per-resource-pool CPU/memory reservation, limit, and current usage.
 
-    Returns name, cpu_reservation_mhz, cpu_limit_mhz, cpu_usage_mhz,
+    Returns the family list envelope with a real ``total`` (every pool is
+    collected before ``limit`` is applied). Each row has
+    name, cpu_reservation_mhz, cpu_limit_mhz, cpu_usage_mhz,
     mem_reservation_mb, mem_limit_mb, mem_usage_mb. A limit of -1 means
     unlimited (vSphere's sentinel). The implicit cluster root pool ("Resources")
     is included. Sorted by memory usage descending.
@@ -124,6 +129,7 @@ def get_resource_pool_usage(
             }
         )
     results.sort(key=lambda x: x["mem_usage_mb"], reverse=True)
+    total = len(results)
     if limit is not None:
         results = results[:limit]
-    return results
+    return paginated(results, limit=limit, total=total)

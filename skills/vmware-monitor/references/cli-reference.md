@@ -2,6 +2,11 @@
 
 Full command reference for `vmware-monitor`.
 
+> **Output shape**: the CLI renders tables, so command output is unchanged. The
+> equivalent MCP tools wrap their rows in the list envelope
+> (`{items, returned, limit, total, truncated, hint}`) — see
+> [`capabilities.md`](capabilities.md#list-result-envelope).
+
 ## Diagnostics
 
 ```bash

@@ -149,7 +149,7 @@ def get_host_investigation_bundle(si: ServiceInstance, host_name: str, hours: in
     ]
     timeline = _correlate.entity_timeline(si, entities, hours=hours)
 
-    perf_rows = get_host_performance(si, host_name=host_name, limit=1)
+    perf_rows = get_host_performance(si, host_name=host_name, limit=1)["items"]
     performance = (
         perf_rows[0]
         if perf_rows

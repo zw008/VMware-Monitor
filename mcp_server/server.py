@@ -29,10 +29,16 @@ from typing import Any, Callable, Optional
 
 # MCP SDK — Model Context Protocol server framework
 from mcp.server.fastmcp import FastMCP
-from vmware_policy import sanitize, vmware_tool
+from vmware_policy import (
+    apply_read_only_gate,
+    mtime_cached_loader,
+    sanitize,
+    set_environment_resolver,
+    vmware_tool,
+)
 
 # Internal VMware monitoring modules (all read-only operations)
-from vmware_monitor.config import load_config
+from vmware_monitor.config import CONFIG_FILE, load_config
 from vmware_monitor.connection import ConnectionManager
 from vmware_monitor.ops.health import (
     get_active_alarms,
@@ -88,24 +94,21 @@ _DOCTOR_HINT = "Run 'vmware-monitor doctor' to verify connectivity and credentia
 
 
 def _catch_tool_errors(fn: Callable[..., Any]) -> Callable[..., Any]:
-    """Translate tool exceptions into an error payload shaped like the tool's
-    return annotation.
+    """Translate tool exceptions into an error payload.
 
-    Tools annotated ``-> list[dict]`` must return a *list* on error too —
-    returning a bare error dict trips FastMCP structured-output validation,
-    raising ToolError so the teaching hint never reaches the agent. Also
-    passes the real tool name (fn.__name__) to _safe_error instead of the
-    old literal "monitor".
+    Every tool returns a dict — list-returning tools return the family list
+    envelope (``{items, returned, limit, total, truncated, hint}``) rather than
+    a bare ``list[dict]``, so the error payload is a plain dict too and matches
+    the return annotation FastMCP validates against. Passes the real tool name
+    (fn.__name__) to _safe_error instead of the old literal "monitor".
     """
-    returns_list = str(fn.__annotations__.get("return", "")).startswith("list")
 
     @functools.wraps(fn)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return fn(*args, **kwargs)
         except Exception as e:
-            err = {"error": _safe_error(e, fn.__name__), "hint": _DOCTOR_HINT}
-            return [err] if returns_list else err
+            return {"error": _safe_error(e, fn.__name__), "hint": _DOCTOR_HINT}
 
     return wrapper
 
@@ -211,18 +214,19 @@ def list_virtual_machines(
 def list_esxi_hosts(
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] List ESXi hosts with CPU cores, memory, version, VM count, and uptime.
+
+    Returns the list envelope {items, returned, limit, total, truncated, hint}.
+    ``total`` is the real host count, so a full page that matches it is stated
+    to be complete instead of leaving you to guess.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of hosts to return (None = all).
     """
     si = _get_connection(target)
-    results = list_hosts(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    return list_hosts(si, limit=limit)
 
 
 @mcp.tool(
@@ -238,18 +242,18 @@ def list_esxi_hosts(
 def list_all_datastores(
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] List datastores with capacity, free space, type, and VM count.
+
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total`` — read ``truncated`` before summarising.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of datastores to return (None = all).
     """
     si = _get_connection(target)
-    results = list_datastores(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    return list_datastores(si, limit=limit)
 
 
 @mcp.tool(
@@ -265,18 +269,18 @@ def list_all_datastores(
 def list_all_clusters(
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] List clusters with host count, DRS/HA status, and resource totals.
+
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total`` — read ``truncated`` before summarising.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of clusters to return (None = all).
     """
     si = _get_connection(target)
-    results = list_clusters(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    return list_clusters(si, limit=limit)
 
 
 @mcp.tool(
@@ -346,7 +350,7 @@ def vm_investigation_bundle(
     """[READ] "What is happening around this VM?" — one correlated drill-down.
 
     Collects and *correlates* everything around a single VM so you don't stitch
-    get_vm_info + list_snapshots + get_alarms + get_vm_performance + get_recent_events
+    vm_info + vm_list_snapshots + get_alarms + vm_performance + get_events
     yourself (which a smaller model often mis-orders): the VM's state, the host it
     runs on, its cluster context, the datastores backing it, its snapshots and
     triggered alarms, live performance, and a merged **event timeline** correlating
@@ -359,7 +363,8 @@ def vm_investigation_bundle(
 
     Args:
         vm_name: Exact VM name. Unknown names return a teaching error naming how to
-            list VMs. Get the name from list_vms or cluster_health_summary first.
+            list VMs. Get the name from list_virtual_machines or
+            cluster_health_summary first.
         target: Optional vCenter/ESXi target name from config (default target if omitted).
         hours: Event-timeline look-back window in hours (default 24).
     """
@@ -495,18 +500,18 @@ def cross_vcenter_attention(
 def list_all_networks(
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] List networks with name, attached VM count, and accessibility.
+
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total`` — read ``truncated`` before summarising.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of networks to return (None = all).
     """
     si = _get_connection(target)
-    results = list_networks(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    return list_networks(si, limit=limit)
 
 
 # ---------------------------------------------------------------------------
@@ -527,21 +532,22 @@ def list_all_networks(
 def get_alarms(
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Get active/triggered alarms across the VMware inventory.
 
     Each alarm includes suggested_actions with ready-to-use hints pointing to
     the correct companion skill and tool for remediation.
+
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total``. An empty ``items`` with ``truncated`` False means
+    there genuinely are no active alarms — never report "no data" otherwise.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of alarms to return (None = all). Use when many alarms are active.
     """
     si = _get_connection(target)
-    results = get_active_alarms(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    return get_active_alarms(si, limit=limit)
 
 
 @mcp.tool(
@@ -558,8 +564,13 @@ def get_events(
     hours: int = 24,
     severity: str = "warning",
     target: Optional[str] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Get recent vCenter/ESXi events filtered by severity.
+
+    Returns the list envelope {items, returned, limit, total, truncated, hint}.
+    No row limit is applied, so ``truncated`` is False; ``total`` is null
+    because vCenter's event collector applies its own bounds — widen ``hours``
+    if you need to be sure nothing older is being missed.
 
     Args:
         hours: How many hours back to query (default 24).
@@ -583,23 +594,23 @@ def get_events(
 def get_host_sensors(
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Get hardware sensor status (temperature, voltage, fan, ...) for all hosts.
 
     Each entry includes host, sensor_name, type, reading, unit, and status
     (green/yellow/red from healthState.key). Use to spot failing hardware
-    before it causes an outage. Returns an empty list when no host exposes
-    sensor data (e.g. nested ESXi).
+    before it causes an outage.
+
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total``. Empty ``items`` means no host exposes sensor data
+    (e.g. nested ESXi), not that the query failed.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
         limit: Max number of sensor rows to return (None = all).
     """
     si = _get_connection(target)
-    results = get_host_hardware_status(si)
-    if limit is not None:
-        results = results[:limit]
-    return results
+    return get_host_hardware_status(si, limit=limit)
 
 
 @mcp.tool(
@@ -615,12 +626,16 @@ def get_host_sensors(
 def get_host_services(
     host_name: Optional[str] = None,
     target: Optional[str] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Get host service status (running state and startup policy).
 
     Each entry includes host, service key, label, running (bool), and policy
     (on/off/automatic). Use to check whether SSH, NTP, or the firewall service
     is in the expected state.
+
+    Returns the list envelope {items, returned, limit, total, truncated, hint}.
+    Every matching host is enumerated, so ``truncated`` is always False — this
+    is the complete picture.
 
     Args:
         host_name: Filter to a single host by exact name (None = all hosts).
@@ -644,14 +659,18 @@ def host_log_scan(
     host_name: Optional[str] = None,
     lines: int = 500,
     target: Optional[str] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Scan recent ESXi host syslog lines for error/warning patterns.
 
     Reads the last ``lines`` entries of the hostd/vmkernel/vpxa logs on each
     host via the diagnostic system and returns only the lines matching known
     trouble patterns (error, fail, critical, panic, lost access, timeout, …).
     Each entry has severity, source (``host_log:<key>``), message, time, and
-    entity (host name). Returns an empty list when no matching lines are found.
+    entity (host name). Empty ``items`` means no matching lines were found.
+
+    Returns the list envelope {items, returned, limit, total, truncated, hint}.
+    ``total`` is null on purpose: only the last ``lines`` entries per log are
+    read, so this is "errors within the scanned window", not "all errors ever".
 
     Only errors/warnings are returned, not the full log, so output stays small
     even on large clusters. Filter to one host with ``host_name`` to keep the
@@ -702,12 +721,14 @@ def vm_info(vm_name: str, target: Optional[str] = None) -> dict:
 )
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
-def vm_list_snapshots(vm_name: str, target: Optional[str] = None) -> list[dict]:
+def vm_list_snapshots(vm_name: str, target: Optional[str] = None) -> dict:
     """[READ] List all snapshots of a VM, including the nesting hierarchy.
 
-    Returns one entry per snapshot with name, description, created timestamp,
-    state, and level (0 = root; children are level+1). Returns an empty list
-    when the VM has no snapshots. Read-only — this skill cannot create,
+    Returns the list envelope {items, returned, limit, total, truncated, hint},
+    one entry per snapshot with name, description, created timestamp,
+    state, and level (0 = root; children are level+1). Empty ``items`` with
+    ``truncated`` False means the VM genuinely has no snapshots. Read-only —
+    this skill cannot create,
     revert, or delete snapshots (use vmware-aiops for those operations).
     Exposes the same data as the CLI command `vmware-monitor vm snapshot-list`
     (was missing from MCP until 2026-06-08 — CLI/MCP parity, 踩坑 #34).
@@ -739,9 +760,11 @@ def host_performance(
     host_name: Optional[str] = None,
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Real-time CPU/memory/disk/network utilisation per ESXi host.
 
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total`` (hosts that actually reported metrics).
     Unlike list_esxi_hosts (static config: cores, total GB), this returns LIVE
     utilisation from the 20-second PerfManager interval: cpu_usage_pct,
     mem_usage_pct, mem_consumed_mb, disk_kbps, net_kbps. Busiest hosts first.
@@ -771,9 +794,12 @@ def vm_performance(
     vm_name: Optional[str] = None,
     target: Optional[str] = None,
     limit: Optional[int] = 25,
-) -> list[dict]:
+) -> dict:
     """[READ] Real-time CPU/memory/disk/network utilisation per virtual machine.
 
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total`` (VMs that actually reported metrics) — with the
+    default limit of 25, ``truncated`` tells you whether more VMs are behind it.
     LIVE utilisation (cpu_usage_pct, mem_usage_pct, mem_consumed_mb,
     disk_read_kbps, disk_write_kbps, net_kbps), busiest VMs first. Only
     powered-on VMs have a real-time provider; powered-off VMs are skipped.
@@ -850,11 +876,13 @@ def certificate_status(
     warn_days: int = 30,
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Per-host ESXi management certificate expiry.
 
     An expired ESXi cert drops host management — this surfaces it before the
-    outage. Returns host, not_after, days_until_expiry, and an ``expiring`` flag
+    outage. Returns the list envelope {items, returned, limit, total,
+    truncated, hint} with a real ``total``; each row has host, not_after,
+    days_until_expiry, and an ``expiring`` flag
     (within warn_days or already expired), soonest-to-expire first. Uses the
     API-native certificateInfo (no PEM parsing).
 
@@ -877,12 +905,14 @@ def certificate_status(
 )
 @vmware_tool(risk_level="low")
 @_catch_tool_errors
-def license_status(target: Optional[str] = None) -> list[dict]:
+def license_status(target: Optional[str] = None) -> dict:
     """[READ] vCenter/ESXi license inventory with usage and expiry.
 
-    Returns one row per license: name, edition_key, total/used units,
-    unlimited flag (total==0), and expiration. Use to catch over-allocation or
-    an approaching license expiry.
+    Returns the list envelope {items, returned, limit, total, truncated, hint},
+    one row per license: name, edition_key, total/used units,
+    unlimited flag (row total==0), and expiration. Use to catch over-allocation
+    or an approaching license expiry. Every license is enumerated, so
+    ``truncated`` is always False — this is the complete inventory.
 
     Args:
         target: Optional vCenter/ESXi target name from config. Uses default if omitted.
@@ -904,10 +934,12 @@ def license_status(target: Optional[str] = None) -> list[dict]:
 def ntp_status(
     host_name: Optional[str] = None,
     target: Optional[str] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Per-host NTP configuration health (servers + ntpd service state).
 
-    Returns host, ntp_servers, ntpd_running, ntpd_policy, and a ``healthy`` flag
+    Returns the list envelope {items, returned, limit, total, truncated, hint};
+    every matching host is enumerated, so ``truncated`` is always False.
+    Each row has host, ntp_servers, ntpd_running, ntpd_policy, and a ``healthy`` flag
     (servers configured AND ntpd running). NOTE: the SOAP API does not expose
     the live clock offset/stratum — this reports configuration health only (the
     actionable signal). For actual offset use esxcli on the host.
@@ -938,9 +970,11 @@ def ntp_status(
 def datastore_capacity(
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Per-datastore capacity with thin-provisioning over-commit.
 
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total``.
     Adds the risk signal list_all_datastores lacks: overcommit_pct
     (provisioned / capacity * 100). Over 100% means more space is promised to
     VMs than physically exists — a thin datastore can fill up while still
@@ -968,10 +1002,12 @@ def datastore_capacity(
 def resource_pool_usage(
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Per-resource-pool CPU/memory reservation, limit, and current usage.
 
-    Returns name, cpu_reservation_mhz, cpu_limit_mhz, cpu_usage_mhz,
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total``; each row has
+    name, cpu_reservation_mhz, cpu_limit_mhz, cpu_usage_mhz,
     mem_reservation_mb, mem_limit_mb, mem_usage_mb. A limit of -1 means
     unlimited. Use to spot pools near their reservation/limit. Sorted by memory
     usage descending.
@@ -1003,10 +1039,12 @@ def active_tasks(
     include_recent: bool = True,
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] In-flight (and optionally just-completed) vCenter tasks.
 
-    Answers "why is the cluster busy?". Returns name, entity, state,
+    Answers "why is the cluster busy?". Returns the list envelope {items,
+    returned, limit, total, truncated, hint} with a real ``total``; each row has
+    name, entity, state,
     progress_pct, start_time, user, active flag, and error (for failed recent
     tasks). Running/queued first. Read-only — cancel tasks via vmware-aiops.
 
@@ -1032,10 +1070,12 @@ def active_tasks(
 def active_sessions(
     target: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[dict]:
+) -> dict:
     """[READ] Currently authenticated vCenter/ESXi sessions (who is logged in).
 
-    Returns user_name, full_name, login_time, last_active, ip_address, and a
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    with a real ``total``; each row has
+    user_name, full_name, login_time, last_active, ip_address, and a
     ``current`` flag for this skill's own session. Requires Sessions privilege;
     low-privilege accounts get a single explanatory row instead of a traceback.
     Read-only — terminating sessions is not supported here.
@@ -1046,6 +1086,69 @@ def active_sessions(
     """
     si = _get_connection(target)
     return get_active_sessions(si, limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# Read-only gate
+# ---------------------------------------------------------------------------
+
+
+def _config_read_only() -> Optional[bool]:
+    """Best-effort read of ``read_only`` from the config file.
+
+    Runs at import time, when no config file need exist yet (tests, ``--help``,
+    smoke checks), so every failure degrades to "not configured" and lets the
+    env vars decide. None and False are equivalent here — config is the last
+    link in the precedence chain — but None keeps 'not configured'
+    distinguishable from 'configured off' in logs and debugging.
+
+    Resolved through the same VMWARE_MONITOR_CONFIG override the connection layer
+    uses. Reading the default path instead would silently ignore settings in an
+    operator's custom config file — a control that appears configured and does
+    nothing, which is the exact failure this work exists to remove.
+    """
+    try:
+        _cfg_path = os.environ.get("VMWARE_MONITOR_CONFIG")
+        return load_config(Path(_cfg_path) if _cfg_path else None).read_only
+    except Exception:  # noqa: BLE001 — absent/unreadable config is not an error here
+        return None
+
+
+# Applied once, after every tool above has registered. This skill is read-only
+# by design — every tool is marked [READ], so the gate has nothing to remove.
+# It is wired up anyway for interface consistency with the rest of the family,
+# and so that "zero write tools" stays provable rather than merely documented
+# (issue #31).
+WITHHELD_WRITE_TOOLS: list[str] = apply_read_only_gate(
+    mcp, "vmware-monitor", config_flag=_config_read_only()
+)
+
+
+# ---------------------------------------------------------------------------
+# Environment declaration
+# ---------------------------------------------------------------------------
+
+
+_cached_config = mtime_cached_loader("VMWARE_MONITOR_CONFIG", CONFIG_FILE, load_config)
+
+
+def _environment_for(target: Optional[str]) -> str:
+    """Report the environment a target declares, for policy scoping.
+
+    Policy rules scope by environment ("irreversible work in production needs a
+    second person"), and vmware-policy cannot read this skill's config itself.
+    Registering this lookup is what lets those rules fire at all. Reloaded on
+    config.yaml mtime change so an edit takes effect without restarting the
+    server. The config is cached via :func:`vmware_policy.mtime_cached_loader`,
+    so repeated tool calls pay one ``os.stat`` instead of a full YAML parse.
+    """
+    try:
+        return _cached_config().environment_for(target)
+    except Exception:  # noqa: BLE001 — an unreadable config means "undeclared"
+        return ""
+
+
+set_environment_resolver(_environment_for)
 
 
 # ---------------------------------------------------------------------------

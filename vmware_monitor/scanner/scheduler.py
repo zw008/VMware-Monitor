@@ -61,7 +61,7 @@ def _run_scan(config: AppConfig, conn_mgr: ConnectionManager) -> None:
 
         # Scan host-level logs
         try:
-            all_issues.extend(scan_host_logs(si))
+            all_issues.extend(scan_host_logs(si)["items"])
         except Exception as e:
             logger.error("Host log scan failed for %s: %s", target_name, e)
 

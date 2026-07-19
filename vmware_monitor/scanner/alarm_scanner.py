@@ -15,7 +15,7 @@ def scan_alarms(si: ServiceInstance) -> list[dict]:
 
     Returns issues compatible with the notification pipeline.
     """
-    alarms = get_active_alarms(si)
+    alarms = get_active_alarms(si)["items"]
     issues: list[dict] = []
 
     for alarm in alarms:

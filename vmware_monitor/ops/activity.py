@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pyVmomi import vim
-from vmware_policy import sanitize
+from vmware_policy import paginated, sanitize
 
 if TYPE_CHECKING:
     from pyVmomi.vim import ServiceInstance
@@ -26,12 +26,14 @@ def get_active_tasks(
     si: ServiceInstance,
     include_recent: bool = True,
     limit: int | None = None,
-) -> list[dict]:
+) -> dict:
     """In-flight (and optionally just-completed) vCenter tasks.
 
-    Returns name, entity, state, progress_pct, start_time, queue/user, and
-    error (when a recent task failed). Running/queued tasks first, then recent
-    completed ones if include_recent is True.
+    Returns the family list envelope. Each row has name, entity, state,
+    progress_pct, start_time, queue/user, and error (when a recent task
+    failed). Running/queued tasks first, then recent completed ones if
+    include_recent is True. ``total`` is real — the whole ``recentTask``
+    collection is materialised and filtered before ``limit`` is applied.
 
     Args:
         si: vSphere ServiceInstance.
@@ -75,18 +77,21 @@ def get_active_tasks(
 
     # Active first, then by start time descending.
     results.sort(key=lambda x: (not x["active"], x["start_time"]), reverse=False)
+    total = len(results)
     if limit is not None:
         results = results[:limit]
-    return results
+    return paginated(results, limit=limit, total=total)
 
 
 def get_active_sessions(
     si: ServiceInstance,
     limit: int | None = None,
-) -> list[dict]:
+) -> dict:
     """Currently authenticated vCenter/ESXi sessions.
 
-    Returns user_name, full_name, login_time, last_active, ip_address, and a
+    Returns the family list envelope with a real ``total`` — the whole session
+    list is materialised before ``limit`` is applied. Each row has user_name,
+    full_name, login_time, last_active, ip_address, and a
     ``current`` flag for the session this skill is using. Requires Sessions
     privileges; low-privilege service accounts may be denied — in that case a
     single explanatory row is returned instead of a traceback (consistent with
@@ -99,7 +104,7 @@ def get_active_sessions(
     content = si.RetrieveContent()
     session_mgr = content.sessionManager
     if session_mgr is None:
-        return []
+        return paginated([], limit=limit, total=0)
 
     current_key = None
     try:
@@ -111,12 +116,18 @@ def get_active_sessions(
     try:
         sessions = list(session_mgr.sessionList or [])
     except vim.fault.NoPermission:
-        return [
-            {
-                "note": "Sessions list requires the Sessions privilege; account lacks it.",
-                "user_name": "N/A",
-            }
-        ]
+        # One explanatory row, and that row is the whole collection — total=1
+        # keeps the envelope from flagging it as a possibly-truncated page.
+        return paginated(
+            [
+                {
+                    "note": "Sessions list requires the Sessions privilege; account lacks it.",
+                    "user_name": "N/A",
+                }
+            ],
+            limit=limit,
+            total=1,
+        )
 
     results: list[dict] = []
     for s in sessions:
@@ -131,6 +142,7 @@ def get_active_sessions(
             }
         )
     results.sort(key=lambda x: x["last_active"], reverse=True)
+    total = len(results)
     if limit is not None:
         results = results[:limit]
-    return results
+    return paginated(results, limit=limit, total=total)

@@ -160,7 +160,7 @@ def test_get_host_services_batches_serviceinfo():
             (ss2, {"serviceInfo": _ServiceInfo([_Svc("TSM-SSH", "SSH", False, "off")])}),
         ],
     }
-    rows = health.get_host_services(_si(fixtures))
+    rows = health.get_host_services(_si(fixtures))["items"]
     assert {(r["host"], r["service"]) for r in rows} == {
         ("esx-01", "ntpd"),
         ("esx-02", "TSM-SSH"),
@@ -178,7 +178,7 @@ def test_get_host_services_host_filter_batches_only_match():
             (ss2, {"serviceInfo": _ServiceInfo([_Svc("ntpd", "NTP", True, "on")])}),
         ],
     }
-    rows = health.get_host_services(_si(fixtures), host_name="esx-02")
+    rows = health.get_host_services(_si(fixtures), host_name="esx-02")["items"]
     assert [r["host"] for r in rows] == ["esx-02"]
     assert rows[0]["running"] is True
 
@@ -206,7 +206,7 @@ def test_get_ntp_status_batches_serviceinfo():
             (ss1, {"serviceInfo": _ServiceInfo([_Svc("ntpd", "NTP", True, "on")])}),
         ],
     }
-    rows = infra_health.get_ntp_status(_si(fixtures))
+    rows = infra_health.get_ntp_status(_si(fixtures))["items"]
     assert len(rows) == 1
     assert rows[0]["host"] == "esx-01"
     assert rows[0]["ntp_servers"] == ["pool.ntp.org"]
@@ -227,7 +227,7 @@ def test_get_ntp_status_no_service_system_is_unhealthy():
             ),
         ],
     }
-    rows = infra_health.get_ntp_status(_si(fixtures))
+    rows = infra_health.get_ntp_status(_si(fixtures))["items"]
     assert rows[0]["ntpd_running"] is False
     assert rows[0]["healthy"] is False
 
@@ -250,7 +250,7 @@ def test_get_certificate_status_batches_certificateinfo():
             (cm2, {"certificateInfo": types.SimpleNamespace(notAfter=now + timedelta(days=5))}),
         ],
     }
-    rows = infra_health.get_certificate_status(_si(fixtures))
+    rows = infra_health.get_certificate_status(_si(fixtures))["items"]
     # soonest-to-expire first, and the 5-day cert is flagged expiring
     assert rows[0]["host"] == "esx-02"
     assert rows[0]["expiring"] is True

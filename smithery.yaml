@@ -10,8 +10,8 @@ startCommand:
   commandFunction:
     |-
     (config) => ({
-      command: "python",
-      args: ["-m", "mcp_server"],
+      command: "vmware-monitor",
+      args: ["mcp"],
       env: {
         VMWARE_MONITOR_CONFIG: config.config_path || ""
       }

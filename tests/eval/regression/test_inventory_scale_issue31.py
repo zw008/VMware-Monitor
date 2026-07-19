@@ -231,7 +231,7 @@ def test_list_hosts_vm_count_from_array_property():
             },
         )
     ]
-    rows = inventory.list_hosts(_si({vim.HostSystem: hosts}))
+    rows = inventory.list_hosts(_si({vim.HostSystem: hosts}))["items"]
     assert rows[0]["vm_count"] == 2
     assert rows[0]["memory_gb"] == 512
 
@@ -251,7 +251,7 @@ def test_list_datastores_capacity_and_count():
             },
         )
     ]
-    rows = inventory.list_datastores(_si({vim.Datastore: ds}))
+    rows = inventory.list_datastores(_si({vim.Datastore: ds}))["items"]
     assert rows[0]["free_gb"] == 100.0
     assert rows[0]["vm_count"] == 1
 
@@ -271,7 +271,7 @@ def test_list_clusters_config_flags():
             },
         )
     ]
-    rows = inventory.list_clusters(_si({vim.ClusterComputeResource: clusters}))
+    rows = inventory.list_clusters(_si({vim.ClusterComputeResource: clusters}))["items"]
     assert rows[0]["host_count"] == 2
     assert rows[0]["drs_enabled"] is True
     assert rows[0]["ha_enabled"] is False
@@ -279,7 +279,7 @@ def test_list_clusters_config_flags():
 
 def test_list_networks_defaults_accessible():
     nets = [(_NoLazyMO("n1"), {"name": "VM Network", "vm": [_NoLazyMO("vm-a")]})]
-    rows = inventory.list_networks(_si({vim.Network: nets}))
+    rows = inventory.list_networks(_si({vim.Network: nets}))["items"]
     assert rows[0]["vm_count"] == 1
     assert rows[0]["accessible"] is True
 

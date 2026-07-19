@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pyVmomi import vim
-from vmware_policy import sanitize
+from vmware_policy import paginated, sanitize
 
 from vmware_monitor.ops._collect import _collect
 
@@ -114,7 +114,7 @@ def get_host_performance(
     si: ServiceInstance,
     host_name: str | None = None,
     limit: int | None = None,
-) -> list[dict]:
+) -> dict:
     """Real-time CPU/memory/disk/network utilisation per ESXi host.
 
     Args:
@@ -122,9 +122,11 @@ def get_host_performance(
         host_name: Filter to a single host by exact name (None = all hosts).
         limit: Max number of host rows to return (None = all).
 
-    Returns one dict per host with cpu_usage_pct, mem_usage_pct,
-    mem_consumed_mb, disk_kbps, net_kbps. Hosts that are disconnected or expose
-    no real-time provider are skipped (not reported as zero).
+    Returns the family list envelope, one row per host with cpu_usage_pct,
+    mem_usage_pct, mem_consumed_mb, disk_kbps, net_kbps. Hosts that are
+    disconnected or expose no real-time provider are skipped (not reported as
+    zero). ``total`` is real — every sampled host is collected before ``limit``
+    is applied, so it counts hosts that actually reported metrics.
     """
     content = si.RetrieveContent()
     perf = content.perfManager
@@ -148,18 +150,21 @@ def get_host_performance(
         results.append(row)
 
     results.sort(key=lambda x: x.get("cpu_usage_pct", 0), reverse=True)
+    total = len(results)
     if limit is not None:
         results = results[:limit]
-    return results
+    return paginated(results, limit=limit, total=total)
 
 
 def get_vm_performance(
     si: ServiceInstance,
     vm_name: str | None = None,
     limit: int | None = None,
-) -> list[dict]:
+) -> dict:
     """Real-time CPU/memory/disk/network utilisation per virtual machine.
 
+    Returns the family list envelope with a real ``total`` — every sampled VM
+    is collected before ``limit`` is applied.
     Only powered-on VMs have a real-time provider; powered-off VMs are skipped.
     Sorted by CPU usage descending so the busiest VMs surface first.
 
@@ -191,6 +196,7 @@ def get_vm_performance(
         results.append(row)
 
     results.sort(key=lambda x: x.get("cpu_usage_pct", 0), reverse=True)
+    total = len(results)
     if limit is not None:
         results = results[:limit]
-    return results
+    return paginated(results, limit=limit, total=total)

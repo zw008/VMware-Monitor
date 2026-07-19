@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from pyVmomi import vim, vmodl
-from vmware_policy import sanitize
+from vmware_policy import paginated, sanitize
 
 from vmware_monitor.ops._collect import _collect, _collect_objects
 
@@ -133,8 +133,16 @@ def _append_alarm(alarm_state: object, name_map: dict, results: list[dict]) -> N
     })
 
 
-def get_active_alarms(si: ServiceInstance) -> list[dict]:
-    """Get all active/triggered alarms across the inventory."""
+def get_active_alarms(si: ServiceInstance, limit: int | None = None) -> dict:
+    """Get all active/triggered alarms across the inventory.
+
+    Returns the family list envelope with a real ``total``: every triggered
+    alarm is collected and deduplicated before ``limit`` is applied.
+
+    Args:
+        si: vSphere ServiceInstance.
+        limit: Max number of alarm rows to return (None = all).
+    """
     content = si.RetrieveContent()
     results: list[dict] = []
     name_map: dict = {}
@@ -169,15 +177,26 @@ def get_active_alarms(si: ServiceInstance) -> list[dict]:
             seen.add(key)
             unique.append(a)
 
-    return sorted(unique, key=lambda x: SEVERITY_ORDER.get(x["severity"], 9))
+    unique.sort(key=lambda x: SEVERITY_ORDER.get(x["severity"], 9))
+    total = len(unique)
+    if limit is not None:
+        unique = unique[:limit]
+    return paginated(unique, limit=limit, total=total)
 
 
 def get_recent_events(
     si: ServiceInstance,
     hours: int = 24,
     severity: str = "warning",
-) -> list[dict]:
-    """Get recent events filtered by severity."""
+) -> dict:
+    """Get recent events filtered by severity.
+
+    Returns the family list envelope. ``total`` is deliberately left ``None``:
+    QueryEvents applies its own server-side collector bounds, so the number of
+    events matching the window is not something this code actually knows. No
+    row limit is applied here, so ``truncated`` is False either way — the null
+    total is the honest statement that the window itself may hide more.
+    """
     content = si.RetrieveContent()
     event_mgr = content.eventManager
 
@@ -222,11 +241,20 @@ def get_recent_events(
             "suggested_actions": actions,
         })
 
-    return sorted(results, key=lambda x: x["time"], reverse=True)
+    results.sort(key=lambda x: x["time"], reverse=True)
+    return paginated(results)
 
 
-def get_host_hardware_status(si: ServiceInstance) -> list[dict]:
-    """Get hardware sensor status for all hosts."""
+def get_host_hardware_status(si: ServiceInstance, limit: int | None = None) -> dict:
+    """Get hardware sensor status for all hosts.
+
+    Returns the family list envelope with a real ``total``: every host's sensor
+    rows are collected before ``limit`` is applied.
+
+    Args:
+        si: vSphere ServiceInstance.
+        limit: Max number of sensor rows to return (None = all).
+    """
     # Batch name + healthSystemRuntime for every host in one PropertyCollector
     # call; the sensor list arrives inline instead of a lazy round-trip per host
     # (issue #31 class). healthSystemRuntime is a data object, not a managed ref.
@@ -249,11 +277,19 @@ def get_host_hardware_status(si: ServiceInstance) -> list[dict]:
                 "unit": sensor.baseUnits,
                 "status": status,
             })
-    return results
+    total = len(results)
+    if limit is not None:
+        results = results[:limit]
+    return paginated(results, limit=limit, total=total)
 
 
-def get_host_services(si: ServiceInstance, host_name: str | None = None) -> list[dict]:
-    """Get service status for hosts."""
+def get_host_services(si: ServiceInstance, host_name: str | None = None) -> dict:
+    """Get service status for hosts.
+
+    Returns the family list envelope. No row limit exists here, and every
+    matching host's services are enumerated, so ``total`` is real and
+    ``truncated`` is False — i.e. "this is the whole picture".
+    """
     # Pass 1: batch name + the serviceSystem reference for every host in one
     # PropertyCollector call (issue #31 class). serviceInfo itself lives on the
     # HostServiceSystem managed object, which a HostSystem container view cannot
@@ -290,4 +326,4 @@ def get_host_services(si: ServiceInstance, host_name: str | None = None) -> list
                 "running": svc.running,
                 "policy": svc.policy,
             })
-    return results
+    return paginated(results, total=len(results))

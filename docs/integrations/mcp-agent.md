@@ -67,7 +67,7 @@ anthropic:
   model: claude-sonnet-4-6
 ```
 
-## Available MCP Tools (7 read-only tools)
+## Available MCP Tools (27 read-only tools)
 
 | Tool | Description |
 |------|-------------|
@@ -79,7 +79,12 @@ anthropic:
 | `get_events` | Get recent vCenter/ESXi events |
 | `vm_info` | Get detailed VM info including snapshot list |
 
-All tools accept an optional `target` parameter to switch between environments.
+The table above is the most-used subset. The server exposes 27 read-only tools in
+total — performance, host health, platform state, and the investigation bundles are
+listed in [`skills/vmware-monitor/references/capabilities.md`](../../skills/vmware-monitor/references/capabilities.md).
+
+All tools accept an optional `target` parameter to switch between environments, except
+`cross_vcenter_attention`, which sweeps every configured target by design.
 
 ## Usage Examples
 

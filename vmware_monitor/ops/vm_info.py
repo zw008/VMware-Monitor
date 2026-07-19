@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from pyVmomi import vim
 
-from vmware_policy import sanitize
+from vmware_policy import paginated, sanitize
 
 from vmware_monitor.ops.inventory import find_vm_by_name, folder_path
 
@@ -96,11 +96,16 @@ def _count_children(snap_tree) -> int:
     return count
 
 
-def list_snapshots(si: ServiceInstance, vm_name: str) -> list[dict]:
-    """List all snapshots for a VM (read-only)."""
+def list_snapshots(si: ServiceInstance, vm_name: str) -> dict:
+    """List all snapshots for a VM (read-only).
+
+    Returns the family list envelope. The whole snapshot tree is walked and no
+    row limit exists, so ``total`` is real and ``truncated`` is False — an
+    empty ``items`` means the VM genuinely has no snapshots.
+    """
     vm = _require_vm(si, vm_name)
     if not vm.snapshot:
-        return []
+        return paginated([], total=0)
 
     results: list[dict] = []
 
@@ -117,4 +122,4 @@ def list_snapshots(si: ServiceInstance, vm_name: str) -> list[dict]:
                 _walk(snap.childSnapshotList, level + 1)
 
     _walk(vm.snapshot.rootSnapshotList)
-    return results
+    return paginated(results, total=len(results))

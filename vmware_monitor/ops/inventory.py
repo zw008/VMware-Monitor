@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pyVmomi import vim
-from vmware_policy import sanitize
+from vmware_policy import paginated, sanitize
 
 from vmware_monitor.ops._collect import _collect
 
@@ -258,8 +258,17 @@ _CLUSTER_PROPS = [
 _NET_PROPS = ["name", "vm", "summary.accessible"]
 
 
-def list_hosts(si: ServiceInstance) -> list[dict]:
-    """List all ESXi hosts with basic info."""
+def list_hosts(si: ServiceInstance, limit: int | None = None) -> dict:
+    """List all ESXi hosts with basic info.
+
+    Returns the family list envelope. ``total`` is a real count: every host is
+    enumerated before ``limit`` is applied, so a full page whose total matches
+    is reported as complete rather than possibly-truncated.
+
+    Args:
+        si: vSphere ServiceInstance.
+        limit: Max number of host rows to return (None = all).
+    """
     results = []
     for _obj, p in _collect(si, [vim.HostSystem], _HOST_PROPS):
         mem = p.get("hardware.memorySize")
@@ -277,11 +286,23 @@ def list_hosts(si: ServiceInstance) -> list[dict]:
                 "uptime_seconds": p.get("summary.quickStats.uptime") or 0,
             }
         )
-    return sorted(results, key=lambda x: x["name"])
+    results.sort(key=lambda x: x["name"])
+    total = len(results)
+    if limit is not None:
+        results = results[:limit]
+    return paginated(results, limit=limit, total=total)
 
 
-def list_datastores(si: ServiceInstance) -> list[dict]:
-    """List all datastores with capacity info."""
+def list_datastores(si: ServiceInstance, limit: int | None = None) -> dict:
+    """List all datastores with capacity info.
+
+    Returns the family list envelope with a real ``total`` (every datastore is
+    enumerated before ``limit`` is applied).
+
+    Args:
+        si: vSphere ServiceInstance.
+        limit: Max number of datastore rows to return (None = all).
+    """
     results = []
     for _obj, p in _collect(si, [vim.Datastore], _DS_PROPS):
         free = p.get("summary.freeSpace")
@@ -297,11 +318,23 @@ def list_datastores(si: ServiceInstance) -> list[dict]:
                 "vm_count": len(p.get("vm") or []),
             }
         )
-    return sorted(results, key=lambda x: x["name"])
+    results.sort(key=lambda x: x["name"])
+    total = len(results)
+    if limit is not None:
+        results = results[:limit]
+    return paginated(results, limit=limit, total=total)
 
 
-def list_clusters(si: ServiceInstance) -> list[dict]:
-    """List all clusters with configuration info."""
+def list_clusters(si: ServiceInstance, limit: int | None = None) -> dict:
+    """List all clusters with configuration info.
+
+    Returns the family list envelope with a real ``total`` (every cluster is
+    enumerated before ``limit`` is applied).
+
+    Args:
+        si: vSphere ServiceInstance.
+        limit: Max number of cluster rows to return (None = all).
+    """
     results = []
     for _obj, p in _collect(si, [vim.ClusterComputeResource], _CLUSTER_PROPS):
         total_mem = p.get("summary.totalMemory")
@@ -317,11 +350,23 @@ def list_clusters(si: ServiceInstance) -> list[dict]:
                 "total_memory_gb": round(total_mem / (1024**3)) if total_mem else 0,
             }
         )
-    return sorted(results, key=lambda x: x["name"])
+    results.sort(key=lambda x: x["name"])
+    total = len(results)
+    if limit is not None:
+        results = results[:limit]
+    return paginated(results, limit=limit, total=total)
 
 
-def list_networks(si: ServiceInstance) -> list[dict]:
-    """List all networks."""
+def list_networks(si: ServiceInstance, limit: int | None = None) -> dict:
+    """List all networks.
+
+    Returns the family list envelope with a real ``total`` (every network is
+    enumerated before ``limit`` is applied).
+
+    Args:
+        si: vSphere ServiceInstance.
+        limit: Max number of network rows to return (None = all).
+    """
     results = []
     for _obj, p in _collect(si, [vim.Network], _NET_PROPS):
         accessible = p.get("summary.accessible")
@@ -332,7 +377,11 @@ def list_networks(si: ServiceInstance) -> list[dict]:
                 "accessible": accessible if accessible is not None else True,
             }
         )
-    return sorted(results, key=lambda x: x["name"])
+    results.sort(key=lambda x: x["name"])
+    total = len(results)
+    if limit is not None:
+        results = results[:limit]
+    return paginated(results, limit=limit, total=total)
 
 
 def find_vm_by_name(si: ServiceInstance, vm_name: str) -> vim.VirtualMachine | None:

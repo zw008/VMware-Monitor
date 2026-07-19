@@ -51,7 +51,7 @@ extensions:
 
 ## Safety
 
-All 8 MCP tools are read-only. No power-off, delete, create, clone, or migrate functions exist in the codebase. Safe to use with any local model — the worst case is a failed query, never a destructive action.
+All 27 MCP tools are read-only. No power-off, delete, create, clone, or migrate functions exist in the codebase. Safe to use with any local model — the worst case is a failed query, never a destructive action.
 
 ## Need full operations?
 

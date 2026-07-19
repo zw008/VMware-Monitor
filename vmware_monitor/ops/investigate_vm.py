@@ -166,8 +166,8 @@ def get_vm_investigation_bundle(si: ServiceInstance, vm_name: str, hours: int = 
     timeline = _correlate.entity_timeline(si, entities, hours=hours)
 
     # Snapshots + live performance reuse the existing read-only ops.
-    snapshots = list_snapshots(si, vm_name)
-    perf_rows = get_vm_performance(si, vm_name=vm_name, limit=1)
+    snapshots = list_snapshots(si, vm_name)["items"]
+    perf_rows = get_vm_performance(si, vm_name=vm_name, limit=1)["items"]
     performance = (
         perf_rows[0]
         if perf_rows

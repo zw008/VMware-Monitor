@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from pyVmomi import vim
-from vmware_policy import sanitize
+from vmware_policy import paginated, sanitize
 
 from vmware_monitor.ops._collect import _collect, _collect_objects
 
@@ -43,11 +43,13 @@ def get_certificate_status(
     si: ServiceInstance,
     warn_days: int = CERT_WARN_DAYS,
     limit: int | None = None,
-) -> list[dict]:
+) -> dict:
     """Per-host ESXi management certificate expiry.
 
+    Returns the family list envelope with a real ``total`` (every host is
+    collected before ``limit`` is applied).
     Uses the API-native ``certificateManager.certificateInfo`` (no PEM parsing,
-    no extra dependency). Returns host, not_after, days_until_expiry, and an
+    no extra dependency). Each row has host, not_after, days_until_expiry, and an
     ``expiring`` flag (True when within warn_days or already expired). Sorted
     soonest-to-expire first.
 
@@ -90,16 +92,22 @@ def get_certificate_status(
             }
         )
     results.sort(key=lambda x: (x["days_until_expiry"] is None, x["days_until_expiry"] or 0))
+    total = len(results)
     if limit is not None:
         results = results[:limit]
-    return results
+    return paginated(results, limit=limit, total=total)
 
 
-def get_license_status(si: ServiceInstance) -> list[dict]:
+def get_license_status(si: ServiceInstance) -> dict:
     """vCenter/ESXi license inventory with usage and expiry.
 
-    Returns one row per license: name, edition_key, total/used units, and any
-    expiration property the server exposes. ``total = 0`` means unlimited.
+    Returns the family list envelope. No row limit exists here and the whole
+    licenseManager collection is enumerated, so ``total`` is real and
+    ``truncated`` is False — "this is every license".
+
+    Each row: name, edition_key, total/used units, and any expiration property
+    the server exposes. Row ``total = 0`` means an unlimited license (not to be
+    confused with the envelope's own ``total``).
     """
     content = si.RetrieveContent()
     lic_mgr = content.licenseManager
@@ -117,16 +125,19 @@ def get_license_status(si: ServiceInstance) -> list[dict]:
                 "expiration": sanitize(str(expiry)) if expiry else "never",
             }
         )
-    return sorted(results, key=lambda x: x["name"])
+    results.sort(key=lambda x: x["name"])
+    return paginated(results, total=len(results))
 
 
 def get_ntp_status(
     si: ServiceInstance,
     host_name: str | None = None,
-) -> list[dict]:
+) -> dict:
     """Per-host NTP configuration health (config + service state).
 
-    Returns host, ntp_servers (configured), ntpd_running, ntpd_policy, and a
+    Returns the family list envelope. No row limit exists here and every
+    matching host is enumerated, so ``total`` is real and ``truncated`` is
+    False. Each row has host, ntp_servers (configured), ntpd_running, ntpd_policy, and a
     ``healthy`` flag (servers configured AND ntpd running). The live clock
     offset is NOT included — see module docstring; the SOAP API does not expose
     it. A healthy=False here means "NTP is misconfigured", which is the
@@ -185,4 +196,5 @@ def get_ntp_status(
                 "note": "live clock offset not exposed by SOAP API; reports config only",
             }
         )
-    return sorted(results, key=lambda x: x["host"])
+    results.sort(key=lambda x: x["host"])
+    return paginated(results, total=len(results))

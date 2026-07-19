@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from pyVmomi import vim
-from vmware_policy import sanitize
+from vmware_policy import paginated, sanitize
 
 from vmware_monitor.config import ScannerConfig
 from vmware_monitor.ops._collect import _collect
@@ -88,10 +88,16 @@ def scan_host_logs(
     host_name: str | None = None,
     log_keys: tuple[str, ...] = ("hostd", "vmkernel", "vpxa"),
     lines: int = 500,
-) -> list[dict]:
+) -> dict:
     """Scan ESXi host syslog entries for error patterns.
 
     This connects to host diagnostic systems to read recent log lines.
+
+    Returns the family list envelope. ``total`` is deliberately ``None``: only
+    the last ``lines`` entries of each log are read, so how many matching lines
+    exist in the full log is not something this code knows. No row limit is
+    applied, so ``truncated`` stays False; the null total is what stops the
+    result from being read as "these are all the errors on the host".
     """
     error_patterns = [
         "error", "fail", "critical", "panic", "lost access",
@@ -151,7 +157,7 @@ def scan_host_logs(
                         "entity": name,
                     })
 
-    return issues
+    return paginated(issues)
 
 
 

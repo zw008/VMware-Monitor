@@ -6,6 +6,19 @@
 #   chmod 600 ~/.vmware-monitor/.env
 # See .env.example for naming convention details
 
+# Read-only mode (v1.8.0+). Off by default. When on, the family read-only gate
+# enumerates the tool registry at startup and removes every tool it cannot prove
+# is read-only. This skill has no write tools to remove, so here the gate acts as
+# a proof rather than a restriction — and as a regression guard, since a tool
+# added later without a [READ] marker would be withheld instead of silently
+# inherited. Fail-closed: if the mode is requested but cannot be guaranteed, the
+# server refuses to start rather than running open.
+# Environment variables win over this key. Precedence, highest first:
+#   VMWARE_MONITOR_READ_ONLY -> VMWARE_READ_ONLY -> this key -> off
+# Set the family-wide VMWARE_READ_ONLY instead if you want one switch to also
+# strip writes from the write-capable siblings (aiops, storage, vks, nsx, ...).
+# read_only: true
+
 targets:
   # vCenter Server
   - name: prod-vcenter
@@ -14,6 +27,14 @@ targets:
     username: administrator@vsphere.local
     # Set password via env: export VMWARE_PROD_VCENTER_PASSWORD=xxx
     type: vcenter
+    # Declare which environment this target is (production / staging / lab).
+    # This skill is read-only, so nothing it exposes is ever gated by this.
+    # It matters for the write skills (aiops, storage, nsx…) pointed at the
+    # same vCenter: policy scopes its rules by this value, an undeclared target
+    # matches none of them, and the next major release refuses undeclared
+    # writes (today it warns). Keeping the label consistent across the family's
+    # config files is what makes that upgrade a no-op.
+    environment: production
     # verify_ssl: true is the default (v1.5.15+). Set to false ONLY for
     # self-signed certs in lab/dev environments — disables SSL verification.
     # verify_ssl: false

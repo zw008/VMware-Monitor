@@ -56,7 +56,7 @@ Add to `~/.cursor/mcp.json`:
 }
 ```
 
-## Available MCP Tools (8 read-only tools)
+## Available MCP Tools (27 read-only tools)
 
 | Tool | Description |
 |------|-------------|
@@ -67,7 +67,11 @@ Add to `~/.cursor/mcp.json`:
 | `get_alarms` | Get active alarms |
 | `get_events` | Get recent events |
 | `vm_info` | Get detailed VM information |
-| `browse_datastore` | Browse datastore file system |
+| `cluster_health_summary` | Cross-cluster triage rollup with Top-N issues |
+
+The table above is the most-used subset. The server exposes 27 read-only tools in
+total — performance, host health, platform state, and the investigation bundles are
+listed in [`skills/vmware-monitor/references/capabilities.md`](../../skills/vmware-monitor/references/capabilities.md).
 
 All tools are **read-only** — no destructive operations exist in the codebase.
 

@@ -44,6 +44,23 @@ chmod 600 ~/.vmware-monitor/.env
 # Edit ~/.vmware-monitor/config.yaml and .env with your target details
 ```
 
+### Declare `environment:` on each target
+
+```yaml
+targets:
+  - name: prod-vcenter
+    host: vcenter-prod.example.com
+    environment: production   # production | staging | lab | <your own label>
+```
+
+Policy scopes its rules by environment rather than by the target's name. This
+skill has zero write tools, so no monitor command is ever refused or delayed
+by this — reads are never gated under any setting. It matters for the write
+skills (`vmware-aiops`, `vmware-storage`, `vmware-nsx`) pointed at the same
+vCenter: an undeclared target matches no rule, which today logs a warning on
+every write and in the next major release refuses it. Keeping the label
+consistent across the family's config files is what makes that upgrade a no-op.
+
 ## Development Install
 
 ```bash
@@ -93,9 +110,23 @@ For Claude Code / Cursor users who prefer structured tool calls, add to `~/.clau
 > PyPI on each launch and breaks behind corporate TLS proxies. The legacy
 > `vmware-monitor-mcp` entry point is also kept for backward compatibility.
 
-MCP exposes 8 read-only tools: `list_virtual_machines`, `list_esxi_hosts`, `list_all_datastores`, `list_all_clusters`, `get_alarms`, `get_events`, `vm_info`, `vm_list_snapshots`. All accept optional `target` parameter.
+MCP exposes 27 read-only tools:
 
-`list_virtual_machines` supports `limit`, `sort_by`, `power_state`, `fields` for compact context in large inventories.
+| Group | Tools |
+|---|---|
+| Inventory | `list_virtual_machines`, `list_esxi_hosts`, `list_all_datastores`, `list_all_clusters`, `list_all_networks`, `resource_pool_usage` |
+| Health & triage | `get_alarms`, `get_events`, `cluster_health_summary`, `cross_vcenter_attention` |
+| VM detail | `vm_info`, `vm_list_snapshots`, `vm_performance`, `snapshot_aging` |
+| Host detail | `host_performance`, `host_log_scan`, `get_host_sensors`, `get_host_services`, `ntp_status` |
+| Platform state | `certificate_status`, `license_status`, `active_sessions`, `active_tasks`, `datastore_capacity` |
+| Investigation bundles | `vm_investigation_bundle`, `host_investigation_bundle`, `datastore_investigation_bundle` |
+
+All accept an optional `target` parameter except `cross_vcenter_attention`, which
+sweeps every configured target by design.
+
+List-style tools take `limit` (default 50) to keep large inventories from flooding
+context; `list_virtual_machines` additionally supports `sort_by`, `power_state`,
+`fields`, and `folder_filter`.
 
 ### Password obfuscation at rest
 
@@ -143,7 +174,7 @@ whitespace are handled correctly).
 
 ### MCP Server — Local Agent Compatibility
 
-The MCP server works with any MCP-compatible agent via stdio transport. All 11 tools are **read-only**. Config templates in `examples/mcp-configs/`:
+The MCP server works with any MCP-compatible agent via stdio transport. All 27 tools are **read-only**. Config templates in `examples/mcp-configs/`:
 
 | Agent | Local Models | Config Template |
 |-------|:----------:|-----------------|
