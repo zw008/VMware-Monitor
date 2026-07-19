@@ -56,6 +56,7 @@ Each operation is classified by autonomy level per the Enterprise Harness Engine
 **Notes**:
 - All tools are safe for agents to call without confirmation — the skill is code-level read-only.
 - Test file `test_no_destructive_operations.py` enforces this invariant on every commit.
+- **Read-only mode**: under `VMWARE_READ_ONLY=true` the family gate removes every `[WRITE]`-marked tool from the registry. This skill has none, so nothing is withheld — the gate instead confirms at start-up that all 27 tools survive, making "zero writes" a checked property rather than a documented one. See README.
 
 ## 0. Cluster Health Summary (triage)
 

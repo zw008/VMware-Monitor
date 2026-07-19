@@ -158,6 +158,29 @@ whitespace are handled correctly).
 - **Webhook Data Scope**: Webhook notifications are **disabled by default**. When enabled, they send monitoring summaries (alarm counts, event types, host status) to **user-configured URLs only** (Slack, Discord, or any HTTP endpoint you control). No data is sent to third-party services. Webhook payloads contain no credentials, IPs, or personally identifiable information — only aggregated alert metadata.
 - **Prompt Injection Protection**: All vSphere-sourced content (event messages, host logs) is truncated, stripped of control characters, and wrapped in boundary markers (`[VSPHERE_EVENT]`/`[VSPHERE_HOST_LOG]`) before output to prevent prompt injection when consumed by LLM agents.
 
+### Read-only mode
+
+All 27 tools in this skill are reads, so the family read-only gate has nothing to remove here. It is wired up anyway, for two reasons: the interface is identical across the family, and it turns "zero write tools" from a claim in this document into something checked at start-up. **Off by default.**
+
+Three ways to enable it, highest precedence first:
+
+| Precedence | Setting | Scope |
+|:-:|---|---|
+| 1 | `VMWARE_MONITOR_READ_ONLY=true` | This skill only |
+| 2 | `VMWARE_READ_ONLY=true` | **Every installed VMware skill** — one setting puts the whole estate in audit posture |
+| 3 | `read_only: true` in `~/.vmware-monitor/config.yaml` | This skill only |
+| 4 | *(unset)* | Off |
+
+The env vars come first so a deployment can be locked down from the MCP client's `env` block without editing any config file. Setting it here changes nothing observable about this skill — its value is that the *same* variable withholds the write tools of vmware-aiops, vmware-storage, vmware-vks and the rest, so an estate-wide audit posture is one setting rather than one per skill.
+
+**Fail-closed.** If read-only mode is requested but cannot be *proven* — the tool registry cannot be enumerated, or a removal does not take effect — the server refuses to start. One case does *not* abort: an unrecognised value (`VMWARE_READ_ONLY=ture`) resolves to **on** with a warning, so a typo locks a deployment down instead of leaving it open.
+
+**Verifying it took**:
+
+```bash
+vmware-monitor doctor      # reports ON/off, and which of the four sources decided it
+```
+
 ## Supported AI Platforms
 
 | Platform | Status | Config File |

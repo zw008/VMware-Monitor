@@ -203,6 +203,16 @@ failed". A `null` `total` (`get_events`, `host_log_scan`) is deliberate.
 Aggregate tools return purpose-built objects instead — field table and
 example payload: `references/capabilities.md`.
 
+## Read-Only Mode
+
+All 27 tools here are reads, so read-only mode withholds nothing — but
+`VMWARE_READ_ONLY=true` (or `VMWARE_MONITOR_READ_ONLY`, or `read_only: true` in
+config.yaml) still applies, and the gate verifies at start-up that zero write
+tools are exposed rather than taking this document's word for it. The same
+variable withholds write tools across every companion skill, so a whole-estate
+audit posture is one setting. `vmware-monitor doctor` reports the current state
+and its source.
+
 ## CLI Quick Reference
 
 ```bash
