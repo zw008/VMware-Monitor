@@ -163,7 +163,7 @@ def test_list_vms_folder_path_from_batched_map():
         ),
     ]
     result = inventory.list_vms(_si(fixtures))
-    paths = {v["name"]: v["folder_path"] for v in result["vms"]}
+    paths = {v["name"]: v["folder_path"] for v in result["items"]}
     assert paths["app-01"] == "/Colocation"   # datacenter root "vm" folder omitted
     assert paths["root-vm"] == "/"            # VM directly in the dc vmFolder
 
@@ -192,9 +192,9 @@ def test_list_vms_shape_and_host_resolution():
     ]
     result = inventory.list_vms(_si(fixtures), limit=1)
     assert result["total"] == 2
-    assert len(result["vms"]) == 1
-    assert result["vms"][0]["name"] == "web-01"   # sorted
-    assert result["vms"][0]["host"] == "esx-01"
+    assert len(result["items"]) == 1
+    assert result["items"][0]["name"] == "web-01"   # sorted
+    assert result["items"][0]["host"] == "esx-01"
 
 
 def test_list_vms_pages_through_continuation_tokens():

@@ -8,7 +8,7 @@ tell a complete answer from page one, so it guesses — and a guess that reads
 
 These tests pin the four properties that remove the guess:
 
-1. all 19 list tools return the six envelope keys (explicit nulls, never a
+1. all 20 list tools return the six envelope keys (explicit nulls, never a
    missing key — a missing key is exactly what a model invents a value for);
 2. a page cut short by ``limit`` reports ``truncated=True`` plus a hint;
 3. a short result reports ``truncated=False`` and ``hint=None``;
@@ -26,6 +26,7 @@ import inspect
 from types import SimpleNamespace
 
 import pytest
+from pyVmomi import vim
 
 from vmware_monitor.ops import (
     activity,
@@ -62,6 +63,22 @@ def _collect_rows(rows):
 
 
 # ── inventory ──────────────────────────────────────────────────────────────
+
+
+def _f_list_vms(mp, n):
+    """VM rows only; the host lookup and folder map see an empty inventory.
+
+    ``list_vms`` calls ``_collect`` five times (hosts, three folder-tree passes,
+    then VMs), so the stub dispatches on the requested type instead of replaying
+    one row set into all five.
+    """
+    rows = [(_Ref(), {"name": f"vm-{i:03d}"}) for i in range(n)]
+    mp.setattr(
+        inventory,
+        "_collect",
+        lambda si, obj_type, paths: rows if obj_type[0] is vim.VirtualMachine else [],
+    )
+    return lambda limit=None: inventory.list_vms(_si(), limit=limit)
 
 
 def _f_list_hosts(mp, n):
@@ -404,11 +421,12 @@ def _f_scan_host_logs(mp, n):
 
 
 # ---------------------------------------------------------------------------
-# The 19 tools in scope, and what each one honestly knows
+# The 20 tools in scope, and what each one honestly knows
 # ---------------------------------------------------------------------------
 
 # name → (factory, accepts a row limit, reports a real total)
 TOOLS: dict[str, tuple] = {
+    "list_virtual_machines": (_f_list_vms, True, True),
     "list_esxi_hosts": (_f_list_hosts, True, True),
     "list_all_datastores": (_f_list_datastores, True, True),
     "list_all_clusters": (_f_list_clusters, True, True),
@@ -436,8 +454,8 @@ WITH_REAL_TOTAL = sorted(n for n, (_f, _l, tot) in TOOLS.items() if tot)
 WITHOUT_REAL_TOTAL = sorted(n for n, (_f, _l, tot) in TOOLS.items() if not tot)
 
 
-def test_scope_is_the_nineteen_tools():
-    assert len(TOOLS) == 19
+def test_scope_is_the_twenty_tools():
+    assert len(TOOLS) == 20
 
 
 # ---------------------------------------------------------------------------
@@ -559,7 +577,7 @@ def test_no_mcp_tool_is_annotated_as_a_bare_list():
     assert not offenders, f"tools still returning a bare list: {offenders}"
 
 
-def test_all_nineteen_tools_are_registered_with_fastmcp():
+def test_all_twenty_tools_are_registered_with_fastmcp():
     import vmware_monitor.mcp_server.server as srv
 
     registered = {t.name for t in asyncio.run(srv.mcp.list_tools())}

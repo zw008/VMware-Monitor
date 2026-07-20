@@ -95,8 +95,9 @@ def get_vm_investigation_bundle(si: ServiceInstance, vm_name: str, hours: int = 
     vm = find_vm_by_name(si, vm_name)
     if vm is None:
         raise VMNotFoundError(
-            f"VM '{vm_name}' not found. Run list_virtual_machines (filter by name, "
-            f"e.g. '{vm_name[:3]}*') to see available VMs and copy an exact name."
+            f"VM not found. Run list_virtual_machines (filter by name, e.g. "
+            f"'{vm_name[:3]}*') to see available VMs and copy an exact name. "
+            f"Requested: '{vm_name}'"
         )
 
     # Pass 1 — the VM's own props + graph morefs, batched for this one object.

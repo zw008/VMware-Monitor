@@ -94,8 +94,8 @@ def get_host_investigation_bundle(si: ServiceInstance, host_name: str, hours: in
     host = find_host_by_name(si, host_name)
     if host is None:
         raise HostNotFoundError(
-            f"Host '{host_name}' not found. Run list_esxi_hosts to see available "
-            f"hosts and copy an exact name."
+            f"Host not found. Run list_esxi_hosts to see available hosts and copy "
+            f"an exact name. Requested: '{host_name}'"
         )
 
     got = _collect_objects(si, [host], vim.HostSystem, _HOST_PROPS)

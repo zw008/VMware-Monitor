@@ -79,7 +79,7 @@ def test_folder_filter_none_returns_all(patched_helpers):
 def test_folder_filter_matches_prefix(patched_helpers):
     """Filter on 'Production' returns the 2 Production VMs."""
     result = list_vms(si=MagicMock(), folder_filter="Production")
-    names = sorted(v["name"] for v in result["vms"])
+    names = sorted(v["name"] for v in result["items"])
     assert names == ["db-prod-01", "web-prod-01"]
     assert result["total"] == 2
 
@@ -94,14 +94,14 @@ def test_folder_filter_substring_anywhere(patched_helpers):
     """Substring 'DR' matches '/Datacenters/DR Site/Replicas'."""
     result = list_vms(si=MagicMock(), folder_filter="DR Site")
     assert result["total"] == 1
-    assert result["vms"][0]["name"] == "dr-replica-01"
+    assert result["items"][0]["name"] == "dr-replica-01"
 
 
 def test_folder_filter_no_match_returns_empty(patched_helpers):
-    """Filter that matches nothing returns total=0, vms=[]."""
+    """Filter that matches nothing returns total=0, items=[]."""
     result = list_vms(si=MagicMock(), folder_filter="DoesNotExist")
     assert result["total"] == 0
-    assert result["vms"] == []
+    assert result["items"] == []
 
 
 def test_folder_filter_combines_with_power_state(patched_helpers, fake_vms):
@@ -114,7 +114,7 @@ def test_folder_filter_combines_with_power_state(patched_helpers, fake_vms):
         power_state="poweredOff",
     )
     assert result["total"] == 1
-    assert result["vms"][0]["name"] == "db-prod-01"
+    assert result["items"][0]["name"] == "db-prod-01"
 
 
 def test_cli_inventory_vms_help_includes_folder_filter():

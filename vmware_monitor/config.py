@@ -163,7 +163,8 @@ class TargetConfig:
         pw = os.environ.get(env_key, "")
         if not pw:
             raise OSError(
-                f"Password not found. Set environment variable: {env_key}"
+                f"Password not found. Add it to ~/.vmware-monitor/.env (chmod 600) "
+                f"or set the environment variable: {env_key}"
             )
         return _decode_secret(pw)
 
@@ -207,7 +208,10 @@ class AppConfig:
             if t.name == name:
                 return t
         available = ", ".join(t.name for t in self.targets)
-        raise KeyError(f"Target '{name}' not found. Available: {available}")
+        raise KeyError(
+            f"Target '{name}' not found. Check the target name against config.yaml, "
+            f"or run 'vmware-monitor init' to add one. Available: {available}"
+        )
 
     def environment_for(self, name: str | None) -> str:
         """Return the environment declared by ``name``, or by the default target.
@@ -226,7 +230,10 @@ class AppConfig:
     @property
     def default_target(self) -> TargetConfig:
         if not self.targets:
-            raise ValueError("No targets configured. Check config.yaml")
+            raise ValueError(
+                "No targets configured. Expected at least one entry under 'targets:' "
+                "in config.yaml — run 'vmware-monitor init' to create one."
+            )
         return self.targets[0]
 
 
@@ -235,8 +242,8 @@ def load_config(config_path: Path | None = None) -> AppConfig:
     path = config_path or CONFIG_FILE
     if not path.exists():
         raise FileNotFoundError(
-            f"Config file not found: {path}\n"
-            f"Copy config.example.yaml to {CONFIG_FILE} and edit it."
+            f"Config file not found. Run 'vmware-monitor init' to create one, or copy "
+            f"config.example.yaml to the missing path and edit it. Expected at: {path}"
         )
 
     with open(path) as f:

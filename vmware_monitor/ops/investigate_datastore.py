@@ -88,8 +88,8 @@ def get_datastore_investigation_bundle(
     ds = find_datastore_by_name(si, datastore_name)
     if ds is None:
         raise DatastoreNotFoundError(
-            f"Datastore '{datastore_name}' not found. Run list_all_datastores to see "
-            f"available datastores and copy an exact name."
+            f"Datastore not found. Run list_all_datastores to see available "
+            f"datastores and copy an exact name. Requested: '{datastore_name}'"
         )
 
     got = _collect_objects(si, [ds], vim.Datastore, _DS_PROPS)

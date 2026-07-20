@@ -194,7 +194,7 @@ history, so it never reports a fabricated "trend" or runway date.
 
 ### List result shape
 
-The 19 row-listing tools above return the family list envelope
+The 20 row-listing tools above return the family list envelope
 `{items, returned, limit, total, truncated, hint}`, not a bare array. Read
 `truncated` before summarising: `true` means more rows exist — never call
 `items` the whole picture; `false` states the result is complete — including

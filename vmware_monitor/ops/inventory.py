@@ -136,11 +136,14 @@ def list_vms(
 ) -> dict:
     """List virtual machines with optional filtering, sorting, and field selection.
 
-    Returns a dict with keys:
-        total   - total VMs after filtering
-        mode    - "full" or "compact" (auto-selected when total > compact_threshold)
-        vms     - list of VM dicts
-        hint    - optional suggestion when compact mode is auto-selected
+    Returns the family list envelope ``{items, returned, limit, total,
+    truncated, hint}`` plus one extra key, ``mode`` (``"full"`` or
+    ``"compact"``). ``total`` is the count after filtering and before ``limit``,
+    so a full page that matches it is reported complete rather than
+    possibly-truncated.
+
+    ``hint`` carries the compact-mode suggestion when auto-compact fires; when a
+    page is also truncated both notes are joined, so neither is lost.
 
     Auto-compact: when no explicit limit/fields are set and total VMs exceed
     compact_threshold (default 50), only compact fields are returned to keep
@@ -210,19 +213,26 @@ def list_vms(
         # Auto-compact: large inventory, no explicit constraints
         mode = "compact"
         results = [{k: r[k] for k in _COMPACT_FIELDS if k in r} for r in results]
-        hint = (
+        compact_hint = (
             f"Large inventory ({total} VMs): showing compact fields only. "
             "Use --limit N or --fields to get full details."
         )
     else:
         mode = "full"
-        hint = None
+        compact_hint = None
         if fields:
             keep = [f for f in fields if f in _VM_VALID_FIELDS]
             if keep:
                 results = [{k: r[k] for k in keep if k in r} for r in results]
 
-    return {"total": total, "mode": mode, "vms": results, "hint": hint}
+    envelope = paginated(results, limit=limit, total=total, mode=mode)
+    if compact_hint is None:
+        return envelope
+    # The envelope owns ``hint``. Compact mode only fires without an explicit
+    # limit, so a truncation hint should not coexist — join rather than assume,
+    # because dropping either note is a silent loss of guidance.
+    merged = f"{envelope['hint']} {compact_hint}" if envelope["hint"] else compact_hint
+    return {**envelope, "hint": merged}
 
 
 _HOST_PROPS = [

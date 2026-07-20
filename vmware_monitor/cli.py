@@ -88,7 +88,7 @@ def inventory_vms(
         folder_filter=folder_filter,
     )
     _audit.log_query(target=tgt, resource="virtual_machines", query_type="list_vms")
-    vms = result["vms"]
+    vms = result["items"]
     total = result["total"]
     mode = result["mode"]
     hint = result["hint"]

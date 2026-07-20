@@ -4,7 +4,8 @@ Detailed feature tables for `vmware-monitor`.
 
 ## List result envelope
 
-The 19 list-returning MCP tools — `list_esxi_hosts`, `list_all_datastores`,
+The 20 list-returning MCP tools — `list_virtual_machines`, `list_esxi_hosts`,
+`list_all_datastores`,
 `list_all_clusters`, `list_all_networks`, `get_alarms`, `get_events`,
 `get_host_sensors`, `get_host_services`, `host_log_scan`, `active_tasks`,
 `active_sessions`, `datastore_capacity`, `resource_pool_usage`,
@@ -37,9 +38,13 @@ smaller models nothing to distinguish a complete answer from page one, and they
 sometimes resolved that ambiguity as "no data was returned"
 (VMware-AIops issue #31).
 
-Tools with purpose-built return objects — `list_virtual_machines`, `vm_info`,
-`snapshot_aging`, `cluster_health_summary`, `cross_vcenter_attention`, and the
-three `*_investigation_bundle` tools — are unaffected.
+`list_virtual_machines` adds one extra key to the envelope, `mode` (`"full"` or
+`"compact"`), and reuses `hint` for the compact-mode note; its `total` is the
+count after `power_state` / `folder_filter` are applied and before `limit`.
+
+Tools with purpose-built return objects — `vm_info`, `snapshot_aging`,
+`cluster_health_summary`, `cross_vcenter_attention`, and the three
+`*_investigation_bundle` tools — are unaffected.
 
 ## Automation Level Reference
 

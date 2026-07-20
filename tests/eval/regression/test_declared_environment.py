@@ -26,6 +26,7 @@ is unlabelled would be the worst possible outcome of a safety control.
 """
 
 import pytest
+from vmware_policy import paginated
 from vmware_policy.budget import reset_budget
 from vmware_policy.environment import resolve_environment, set_environment_resolver
 from vmware_policy.policy import reset_policy_engine
@@ -86,7 +87,7 @@ def stub_vcenter(monkeypatch):
     """Neutralise the vSphere calls; policy runs before the body either way."""
     monkeypatch.setattr(server, "_get_connection", lambda target=None: object())
     monkeypatch.setattr(
-        server, "list_vms", lambda si, **kwargs: {"total": 1, "vms": [{"name": "web-01"}]}
+        server, "list_vms", lambda si, **kwargs: paginated([{"name": "web-01"}], total=1)
     )
 
 

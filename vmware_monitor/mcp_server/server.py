@@ -65,12 +65,18 @@ from vmware_monitor.ops.inventory import (
     list_networks,
     list_vms,
 )
-from vmware_monitor.ops.investigate_datastore import get_datastore_investigation_bundle
-from vmware_monitor.ops.investigate_host import get_host_investigation_bundle
+from vmware_monitor.ops.investigate_datastore import (
+    DatastoreNotFoundError,
+    get_datastore_investigation_bundle,
+)
+from vmware_monitor.ops.investigate_host import (
+    HostNotFoundError,
+    get_host_investigation_bundle,
+)
 from vmware_monitor.ops.investigate_vm import get_vm_investigation_bundle
 from vmware_monitor.ops.performance import get_host_performance, get_vm_performance
 from vmware_monitor.ops.snapshots import list_snapshot_aging
-from vmware_monitor.ops.vm_info import get_vm_info, list_snapshots
+from vmware_monitor.ops.vm_info import VMNotFoundError, get_vm_info, list_snapshots
 from vmware_monitor.scanner.log_scanner import scan_host_logs as _ops_scan_host_logs
 
 logger = logging.getLogger(__name__)
@@ -81,11 +87,46 @@ def _safe_error(exc: Exception, tool: str) -> str:
 
     Raw exception text can carry API response bodies, internal paths, or
     host:port pairs. Full traceback goes to the server log; the agent sees only
-    a control-char-stripped, length-capped message. Intentional validation
-    errors (ValueError/FileNotFoundError/KeyError/PermissionError) pass through.
+    a control-char-stripped, length-capped message.
+
+    Every exception this skill raises on purpose passes through: the builtin
+    validation errors, and the domain exceptions defined under
+    ``vmware_monitor.ops``. Those three cover this skill's most common failure —
+    a name that does not resolve — and each carries the sentence naming the
+    listing tool that produces a valid one. Omitting them replaced that sentence
+    with ``VMNotFoundError: operation failed.`` on the way to the agent, so the
+    teaching text was written, printed in full by the CLI, and discarded at the
+    one surface where a model would have used it.
+
+    ``TimeoutError`` and ``ConnectionError`` are here for the same reason: the
+    CLI path catches ``OSError`` and prints a retry hint, and the two surfaces
+    should not disagree about what a dropped connection means.
+
+    ``OSError`` itself is here because ``config.py`` raises exactly one — the
+    missing-password error, this family's most common first-run failure, whose
+    entire remedy is the env var name it carries. Its subclasses
+    ``FileNotFoundError``, ``PermissionError``, ``TimeoutError`` and
+    ``ConnectionError`` were already allowed, so admitting the base class
+    widens exposure only to the remaining OS-level subtypes.
+
+    Anything else is reduced to its type — an unplanned exception's text was
+    written for a developer reading a traceback, not for an agent choosing what
+    to do next, and it is the one that can carry credentials.
     """
     logger.error("Tool %s failed", tool, exc_info=True)
-    if isinstance(exc, (ValueError, FileNotFoundError, KeyError, PermissionError)):
+    _passthrough = (
+        ValueError,
+        FileNotFoundError,
+        KeyError,
+        PermissionError,
+        TimeoutError,
+        ConnectionError,
+        OSError,
+        VMNotFoundError,
+        HostNotFoundError,
+        DatastoreNotFoundError,
+    )
+    if isinstance(exc, _passthrough):
         return sanitize(str(exc), 300)
     return f"{type(exc).__name__}: operation failed."
 
@@ -170,9 +211,10 @@ def list_virtual_machines(
 ) -> dict:
     """[READ] List virtual machines with optional filtering, sorting, and field selection.
 
-    Returns a dict: {total, mode, vms, hint}. Each VM entry includes a
-    ``folder_path`` field showing the vCenter inventory folder path
-    (e.g. ``/Colocation/Colo - ISER``).
+    Returns the list envelope {items, returned, limit, total, truncated, hint}
+    plus ``mode`` ("full"/"compact"); ``total`` is the real post-filter count, so
+    read ``truncated`` before summarising. Each VM entry carries ``folder_path``,
+    its vCenter inventory folder path (e.g. ``/Colocation/Colo - ISER``).
 
     Auto-compact: when no limit/fields are set and inventory exceeds 50 VMs,
     returns compact fields (name, power_state, cpu, memory_mb, folder_path) to
