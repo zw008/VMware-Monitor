@@ -1,3 +1,91 @@
+## v1.8.5 (2026-07-20) — the two fixes v1.8.4 announced now actually work
+
+Four adversarial reviews of v1.8.4 found that both of its headline fixes were
+incomplete in ways the release notes did not reflect. This release makes them
+real. If you are on 1.8.4, this is the one to take.
+
+### Fixed — a failure that was *returned* was still audited as a success
+
+vmware-policy 1.8.4 added `report_tool_failure()` for tools that catch an
+exception and return an error payload instead of raising. **No skill called it.**
+
+Every string-returning tool therefore kept doing exactly what 1.8.4 said it had
+stopped doing: writing `status=ok` to `~/.vmware/audit.db` for an operation that
+failed, recording an undo token for a change that never happened, and telling the
+circuit breaker the call succeeded so repeated failures never tripped it.
+
+The surface this covered is not marginal:
+
+| Skill | What was mis-audited |
+|---|---|
+| vmware-aiops | 25 of 49 tools, including **every undo-bearing write** — a failed `vm_power_on` left an undo token saying "power it back off" |
+| vmware-avi | all 28 tools, including `vs_toggle` and `ako_restart` |
+| vmware-storage | all 4 write tools |
+| vmware-nsx | the 5 delete tools |
+
+vmware-avi is worth calling out: before 1.8.4 its exceptions propagated and the
+audit was correct. 1.8.4 caught them and returned a string, so **that release made
+its audit trail worse than it had been.**
+
+Skills whose tools already return dict payloads (vmware-monitor, vmware-vks,
+vmware-aria, vmware-log-insight, vmware-harden, vmware-debug, vmware-pilot) were
+already detected correctly. They gained a test proving it rather than a redundant
+call.
+
+### Fixed — narrowing `OSError` did not close the leak it was meant to close
+
+1.8.4 narrowed the `_safe_error` passthrough because bare `OSError` let TLS and
+DNS failures reach the agent with hostnames and certificate subjects in them.
+That narrowing had no effect on the error it was written for:
+
+```
+ssl.SSLCertVerificationError → ssl.SSLError → OSError, ValueError
+```
+
+`ValueError` has been on every allowlist since long before 1.8.4, so a
+certificate failure kept passing through — the commonest self-signed-certificate
+failure in this family, carrying the hostname it was checked against. An
+allowlist structurally cannot express "not this one".
+
+Where `ssl.SSLError` can actually surface — the pyVmomi skills — it is now
+reduced *ahead* of the allowlist. In the httpx skills TLS arrives wrapped as
+`httpx.ConnectError`, and in vmware-avi as `requests.exceptions.SSLError`, so the
+guard cannot fire there; in those skills the leak was the raw exception
+interpolated into an already-allowlisted `*ApiError`, and that is now authored
+text naming the config target and `verify_ssl` instead of the exception.
+
+The missing-password error — this family's most common first-run failure, whose
+entire remedy is the environment variable name it carries — keeps its message
+through a narrow `ConfigError(OSError)` rather than the base class. Connection
+failures are translated at the connection layer into an authored remedy that
+names the target and the setting to change, with the raw detail left on
+`__cause__` for the server log.
+
+### Also fixed
+
+- **vmware-vks**: the quickstart documented a password variable the code never
+  reads — following `README.md` verbatim produced "Password not found". Five
+  places, plus six references to a `doctor` command this CLI has never had, two
+  descriptions promising fields the tools do not return, and eight teaching
+  messages that `RuntimeError` was masking.
+- **vmware-nsx**: an error cited `--route-advertisement`; the flag is `--advertise`.
+- **vmware-pilot**: `get_workflow_status` told the model to call `approve` — a
+  tool the read-only gate withholds — as the required next step; and a hint
+  pointed at a filename that could never appear in that message.
+- **vmware-aiops**: `vm_task_status` polling a *failed task* returned
+  `{"state": "error", "error": ...}` from a successful read, which the new
+  detection read as the call itself failing. The field is now `task_error`.
+  **This is a breaking change for anything parsing that payload.**
+- Several remedies that were still being cut by the 300-character cap the 1.8.4
+  notes claimed to have addressed.
+
+### Known and not fixed
+
+`ConnectionError` remains one type from two sources in several skills — a
+skill's own authored message and urllib3's `HTTPSConnectionPool(host=..., port=...)`
+share it, and an allowlist cannot separate them. vmware-vks is converted; the
+rest need their own domain type and are deferred rather than half-done.
+
 ## v1.8.4 (2026-07-20) — errors that teach, and tool descriptions a small model can route from
 
 A capability eval was rolled out across the family and asked two open questions:
