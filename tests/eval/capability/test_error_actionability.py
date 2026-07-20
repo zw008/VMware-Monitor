@@ -65,6 +65,7 @@ from collections.abc import Callable
 import pytest
 
 from ._scoring import Score
+from ._family import ALL_TOOLS, FAMILY_COMMANDS
 from ._skill import CLI_NAME, COMPANION_SKILLS, PACKAGE, SERVER_MODULE
 
 pytestmark = pytest.mark.capability
@@ -213,6 +214,49 @@ def _cli_commands() -> frozenset[str] | None:
     return None
 
 
+#: A token cited in an imperative position — "run `foo_bar`", "call foo_bar".
+#: Only these are treated as claims about the surface. A snake_case word
+#: elsewhere in a sentence is usually a parameter or a response field, and
+#: flagging those would drown the real signal.
+#: ``see`` and ``use`` are excluded: "see RELEASE_NOTES.md 'Known limitations'"
+#: read as a call to a tool named ``release_notes``. The trailing guard keeps a
+#: filename from matching at all — a citation ends at the word, not at a dot.
+CITED_TOOL = re.compile(
+    r"\b(?:run|re-run|rerun|call|invoke)\s+['\"`]?([a-z][a-z0-9]*(?:_[a-z0-9]+)+)(?![.\w])"
+)
+
+
+def _citable_tool_names(tools) -> frozenset[str]:
+    """Every tool name a message in this repo may legitimately cite.
+
+    This repo's own surface plus every sibling's, because cross-skill routing is
+    the family's promoted pattern — "run vmware-monitor's ``list_esxi_hosts``"
+    is a documented hand-off, not a phantom. ``ALL_TOOLS`` is generated from all
+    twelve live registries by ``scripts/install_capability_evals.sh``.
+
+    A separate function so the union is testable on its own: driven only through
+    the live check, dropping the sibling half is invisible in any repo whose own
+    messages happen not to route outward.
+    """
+    own = frozenset(t.name.lower() for t in tools)
+    assert own, "no tools on the surface — this check would pass vacuously"
+    assert ALL_TOOLS, "_family.py holds no tools — regenerate it before trusting this"
+    return own | frozenset(n.lower() for n in ALL_TOOLS)
+
+
+def _phantom_tool_citations(text: str, known: frozenset[str]) -> list[str]:
+    """Tool-shaped names cited as callable that are not on the surface.
+
+    ``names_artifact`` is an any-of predicate: one real artifact anywhere in the
+    message earns the point. So a message reading "Run list_vms to see VMs.
+    Also check .env." scored full marks *and* steered the model at a tool that
+    does not exist — the registry rebuild closed only the case where the phantom
+    was the sole artifact. Phantom citations are a regression-class property, not
+    a trend, so they are asserted rather than scored.
+    """
+    return sorted({m.group(1) for m in CITED_TOOL.finditer(text)} - known)
+
+
 _UNSET = object()
 
 
@@ -256,44 +300,60 @@ def _artifact_matcher(tools, cli_commands=_UNSET) -> Callable[[str], bool]:
     #: tools are snake_case, so a token containing ``_`` is a tool reference,
     #: not a subcommand claim — it is checked against the registry below rather
     #: than being mistaken for a phantom command named "get".
-    cli_call = re.compile(
-        r"(?:['\"`]|\b(?:run|re-run|rerun|via|using|with)\s+['\"`]?)"
-        + re.escape(CLI_NAME.lower())
-        + r"((?:\s+[a-z][a-z0-9_-]*){1,3})"
-    )
-    cli_mention = re.compile(re.escape(CLI_NAME.lower()))
+    def _cites_cli(low: str, cli: str, known_commands) -> bool:
+        """``<cli> <subcommand>`` counts only when the subcommand is registered.
 
-    def _valid(tokens: list[str]) -> bool:
-        """True if some prefix of the cited tokens is a runnable command path.
+        Used for this skill's own CLI *and* for every companion it routes to, so
+        the two rules cannot drift — the companion path was previously exempt
+        and credited any mention outright.
 
-        A prefix, because real messages trail prose — "run 'vmware-nsx init' to
-        rebuild it" cites `init` followed by words that are not arguments. A
-        *group* on its own is not a prefix that runs, so `pool` alone never
-        satisfies this even though `pool members` does.
+        A prefix of the cited tokens is enough, because real messages trail
+        prose: "run 'vmware-nsx init' to rebuild it" cites ``init`` followed by
+        words that are not arguments. A *group* alone is not a runnable prefix,
+        so ``pool`` never satisfies this even though ``pool members`` does.
+
+        ``known_commands is None`` means that CLI's tree could not be resolved —
+        unverifiable, which is not the same as refuted.
         """
-        return any(" ".join(tokens[: i + 1]) in commands for i in range(len(tokens)))
-
-    def _cites_this_cli(low: str) -> bool:
-        if not cli_mention.search(low):
+        if cli not in low:
             return False
+        pattern = re.compile(
+            r"(?:['\"`]|\b(?:run|re-run|rerun|via|using|with)\s+['\"`]?)"
+            + re.escape(cli)
+            + r"((?:\s+[a-z][a-z0-9_-]*){1,3})"
+        )
         claims = [
-            [t for t in m.group(1).split() if "_" not in t] for m in cli_call.finditer(low)
+            [t for t in m.group(1).split() if "_" not in t] for m in pattern.finditer(low)
         ]
         claims = [c for c in claims if c]
         if not claims:
             return True  # names the executable, or a tool the registry check reads
-        if commands is None:
-            return True  # app not introspectable: unverifiable, not refuted
-        return any(_valid(c) for c in claims)
+        if known_commands is None:
+            return True  # tree not introspectable: unverifiable, not refuted
+        return any(
+            any(" ".join(c[: i + 1]) in known_commands for i in range(len(c)))
+            for c in claims
+        )
+
+    def _cites_this_cli(low: str) -> bool:
+        return _cites_cli(low, CLI_NAME.lower(), commands)
 
     def names_artifact(text: str) -> bool:
         low = text.lower()
         if any(m in low for m in STATIC_ARTIFACT_MARKERS if m != CLI_NAME):
             return True
-        # A companion hand-off counts, but not when the "companion" is this
-        # skill's own name wearing a shorter prefix.
-        if any(m.group(0) != CLI_NAME.lower() for m in COMPANION_PATTERN.finditer(low)):
-            return True
+        # A companion hand-off counts — but its subcommand is verified exactly
+        # like our own. Crediting any companion mention outright reopened the
+        # phantom-command hole one hop away: "run 'vmware-storage not-a-command'"
+        # scored full marks in every repo, which is the same defect the CLI
+        # check was built for. FAMILY_COMMANDS is generated from every repo's
+        # live Typer tree by scripts/install_capability_evals.sh.
+        for match in COMPANION_PATTERN.finditer(low):
+            companion = match.group(0)
+            if companion == CLI_NAME.lower():
+                continue
+            if _cites_cli(low, companion, FAMILY_COMMANDS.get(companion)):
+                return True
         if _cites_this_cli(low):
             return True
         if FLAG_PATTERN.search(low) or ENV_VAR_PATTERN.search(text):
@@ -471,6 +531,29 @@ def test_error_actionability_index(board, graded_errors):
     assert score.pct >= 35.0, (
         f"error messages collapsed to {score.pct}% actionable — failures are now dead "
         f"ends for a model that cannot infer recovery. Worst: {dead_ends[:5]}"
+    )
+
+
+def test_no_error_message_cites_a_tool_that_does_not_exist(tools, graded_errors):
+    """Every tool an error tells the model to run must be on the surface.
+
+    Separate from the scored dimensions on purpose. ``names_artifact`` asks "is
+    there something to act on?" and stops at the first yes; this asks "is
+    everything it points at real?", which no aggregate can express — a message
+    can be 3/3 actionable and still strand the model, as long as it names one
+    valid artifact alongside the phantom.
+    """
+    known = _citable_tool_names(tools)
+
+    phantoms = [
+        {"where": f"{f}:{ln}", "cites": bad, "message": text[:120]}
+        for f, ln, text, _c, _g in graded_errors
+        for bad in [_phantom_tool_citations(text.lower(), known)]
+        if bad
+    ]
+    assert not phantoms, (
+        f"{len(phantoms)} error message(s) tell the model to run a tool this "
+        f"surface does not expose — a remedy it cannot carry out: {phantoms[:5]}"
     )
 
 
@@ -661,7 +744,7 @@ def test_remedies_survive_the_truncation_cap(board, graded_errors):
     )
 
 
-def _error_returns_in_server():
+def _error_returns_in_server(server_dir=None, module=None):
     """Yield ``(lineno, is_dict, has_hint, hint_text)`` for each caught-error return.
 
     Scanned statically out of the MCP server module rather than by calling a
@@ -671,8 +754,15 @@ def _error_returns_in_server():
     *exhaustively* — which is the one that drifts, since each site is written
     independently and nothing forces them to match.
     """
-    module = importlib.import_module(SERVER_MODULE)
-    server_dir = pathlib.Path(module.__file__).parent
+    # Both parameters default to this repo's live server. They exist so the
+    # regression suite can point the scan at a fabricated source: driven only
+    # against whatever the package contains, a resolution bug is invisible until
+    # some repo happens to write its handler the unhandled way — which is
+    # exactly how a whole surface went unseen once already.
+    if module is None:
+        module = importlib.import_module(SERVER_MODULE)
+    if server_dir is None:
+        server_dir = pathlib.Path(module.__file__).parent
 
     def _resolve(node) -> str:
         """Render a hint expression as text, following module-level constants.
@@ -705,7 +795,7 @@ def _error_returns_in_server():
             # payload as having none.
             if node.id in file_constants:
                 return file_constants[node.id]
-            return str(getattr(module, node.id, ""))
+            return str(getattr(module, node.id, "") if module is not None else "")
         return ""
 
     # Walk every module in the server package, not just server.py: skills split
@@ -765,10 +855,24 @@ def _error_returns_in_server():
         )
 
     for handler, file_constants in handlers:
+        # `msg = _render(...)` then `return msg` is ordinary style, and reading
+        # only the return expression made the whole surface invisible: one skill
+        # wrote its handler that way and this scan found zero error returns for
+        # a repo that has 28 tools' worth. Resolve a returned local back to what
+        # the handler assigned it.
+        locals_in_handler = {
+            t.id: n.value
+            for n in ast.walk(handler)
+            if isinstance(n, ast.Assign)
+            for t in n.targets
+            if isinstance(t, ast.Name)
+        }
         for node in ast.walk(handler):
             if not (isinstance(node, ast.Return) and node.value is not None):
                 continue
             value = node.value
+            if isinstance(value, ast.Name) and value.id in locals_in_handler:
+                value = locals_in_handler[value.id]
             folded = ""
             if isinstance(value, ast.Call):
                 fn = value.func

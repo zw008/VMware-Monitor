@@ -99,14 +99,38 @@ class ScoreBoard:
         return {s.name: s.as_dict() for s in sorted(self.records, key=lambda s: s.name)}
 
     def write(self, path: Path = SCORES_PATH) -> None:
+        """Persist this run's scores, never shrinking the recorded baseline.
+
+        A partial selection — ``pytest tests/eval/capability/test_x.py`` — used
+        to rewrite the file with only the metrics that run collected, silently
+        deleting the rest. Running one measurement across the family reduced all
+        twelve baselines from thirteen metrics to three, and one ``git add -A``
+        would have made that permanent: the next release would have had nothing
+        to diff against, which is the mixed-provenance corruption this file
+        exists to prevent.
+
+        Metrics from earlier runs are carried forward and marked ``stale`` so a
+        reader can tell a fresh measurement from an inherited one. Nothing is
+        lost, and nothing pretends to be newer than it is.
+        """
         if not self.records:
             return
+        fresh = self.as_dict()
+        merged = dict(fresh)
+        for name, value in previous_scores(path).items():
+            if name not in merged:
+                carried = dict(value) if isinstance(value, dict) else value
+                if isinstance(carried, dict):
+                    carried["stale"] = True
+                merged[name] = carried
         payload = {
             "_comment": (
                 "Capability eval scores. Regenerate with: pytest -m capability. "
-                "These are tracked trends, not pass/fail gates — see _scoring.py."
+                "These are tracked trends, not pass/fail gates — see _scoring.py. "
+                "Entries marked stale=true were carried over from an earlier run "
+                "because this run did not measure them."
             ),
-            "scores": self.as_dict(),
+            "scores": merged,
         }
         path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 

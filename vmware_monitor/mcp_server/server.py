@@ -24,6 +24,7 @@ License: MIT
 import functools
 import logging
 import os
+import ssl
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -38,7 +39,7 @@ from vmware_policy import (
 )
 
 # Internal VMware monitoring modules (all read-only operations)
-from vmware_monitor.config import CONFIG_FILE, load_config
+from vmware_monitor.config import CONFIG_FILE, ConfigError, load_config
 from vmware_monitor.connection import ConnectionManager
 from vmware_monitor.ops.health import (
     get_active_alarms,
@@ -102,18 +103,30 @@ def _safe_error(exc: Exception, tool: str) -> str:
     CLI path catches ``OSError`` and prints a retry hint, and the two surfaces
     should not disagree about what a dropped connection means.
 
-    ``OSError`` itself is here because ``config.py`` raises exactly one — the
-    missing-password error, this family's most common first-run failure, whose
-    entire remedy is the env var name it carries. Its subclasses
-    ``FileNotFoundError``, ``PermissionError``, ``TimeoutError`` and
-    ``ConnectionError`` were already allowed, so admitting the base class
-    widens exposure only to the remaining OS-level subtypes.
+    The configuration errors this skill raises on purpose — the missing-password
+    error, this family's most common first-run failure, and the connection
+    layer's authored replacement for a transport failure — pass through as the
+    narrow ``ConfigError``. Bare ``OSError`` was briefly listed here for them and
+    was too wide a door: ``sanitize`` strips control characters and truncates, it
+    does not redact, so ``ssl.SSLCertVerificationError`` (certificate subject and
+    hostname), ``socket.gaierror`` (the name that failed to resolve) and
+    ``requests``-style connection errors (full scheme://host:port/path) all
+    reached the agent verbatim through it. Only the narrow ``OSError`` subclasses
+    that were allowed before it remain.
 
     Anything else is reduced to its type — an unplanned exception's text was
     written for a developer reading a traceback, not for an agent choosing what
     to do next, and it is the one that can carry credentials.
     """
     logger.error("Tool %s failed", tool, exc_info=True)
+    # Checked ahead of the allowlist: ssl.SSLCertVerificationError inherits from
+    # ValueError as well as OSError, so it matches the ValueError entry — which
+    # predates the OSError one — and narrowing the OSError side does not keep it
+    # out. Its text quotes the certificate subject and the host. The connection
+    # layer replaces the ones raised on a connect attempt with an authored
+    # ConnectError that names the target and verify_ssl instead.
+    if isinstance(exc, ssl.SSLError):
+        return f"{type(exc).__name__}: operation failed."
     _passthrough = (
         ValueError,
         FileNotFoundError,
@@ -121,7 +134,7 @@ def _safe_error(exc: Exception, tool: str) -> str:
         PermissionError,
         TimeoutError,
         ConnectionError,
-        OSError,
+        ConfigError,
         VMNotFoundError,
         HostNotFoundError,
         DatastoreNotFoundError,

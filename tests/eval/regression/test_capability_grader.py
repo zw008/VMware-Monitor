@@ -104,6 +104,142 @@ def test_a_companion_prefix_does_not_credit_this_skill_naming_itself():
     assert not _with_commands(f"Run '{CLI_NAME} not-a-command' to fix it.")
 
 
+def test_rejects_a_phantom_subcommand_of_a_COMPANION_cli():
+    """The companion path was exempt from the check built to catch exactly this.
+
+    Any mention of a sibling skill's CLI scored a documented hand-off outright,
+    so `run 'vmware-storage not-a-command'` earned full marks in all twelve
+    repos — the `<cli> doctor` phantom, reopened one hop away.
+    """
+    assert not _names_artifact("Run 'vmware-storage not-a-command' to fix it.")
+
+
+def test_credits_a_real_subcommand_of_a_companion_cli():
+    assert _names_artifact("Run 'vmware-storage iscsi status esx-01' to check it.")
+
+
+def test_credits_a_companion_named_without_a_subcommand():
+    """A bare hand-off claims nothing to verify."""
+    assert _names_artifact("Datastore names come from the vmware-storage skill.")
+
+
+def test_a_companion_tool_is_not_a_phantom():
+    """Cross-skill routing is the promoted pattern; a sibling's tool is real.
+
+    Exercises the union the live check builds, not a set assembled here — the
+    sibling half can be dropped without any repo noticing if its own messages
+    happen not to route outward, so the union itself is what needs pinning.
+    """
+    from ..capability.test_error_actionability import (
+        _citable_tool_names,
+        _phantom_tool_citations,
+    )
+
+    known = _citable_tool_names([SimpleNamespace(name=n) for n in SURFACE])
+    assert "list_esxi_hosts" in known, "a sibling skill's tool must be citable"
+    assert not _phantom_tool_citations("run list_esxi_hosts to see hosts.", known)
+    assert _phantom_tool_citations("run list_vms to see vms.", known) == ["list_vms"]
+
+
+def test_a_filename_after_a_citation_verb_is_not_a_tool():
+    """A citation ends at the word, not at a dot.
+
+    "run migrate_db.sh" names a script, not a tool, and flagging it would be a
+    false phantom. An earlier version of this test used "see RELEASE_NOTES.md"
+    — which passes whether or not the guard exists, because ``see`` is not a
+    citation verb at all. It asserted nothing about the thing it was named for.
+    """
+    from ..capability.test_error_actionability import _phantom_tool_citations
+    from ..capability._family import ALL_TOOLS
+
+    known = frozenset(n.lower() for n in ALL_TOOLS)
+    assert not _phantom_tool_citations("run migrate_db.sh and retry", known)
+    assert _phantom_tool_citations("run migrate_db and retry", known) == ["migrate_db"]
+
+
+def test_an_error_returned_via_a_local_is_still_seen(tmp_path):
+    """`msg = render(...)` then `return msg` must not hide the payload.
+
+    Reading only the return expression made one skill's entire error surface
+    invisible — the scan reported zero sites for a repo with 28 tools, and the
+    empty-guard fired instead of the metric. The style is ordinary; the scan was
+    narrow.
+
+    Fed a fabricated module rather than this repo's, so the property is pinned
+    whether or not any real skill currently writes its handler that way.
+    """
+    from ..capability.test_error_actionability import _error_returns_in_server
+
+    (tmp_path / "server.py").write_text(
+        "_HINT = 'Run cluster_info to see members.'\n"
+        "def direct():\n"
+        "    try:\n"
+        "        pass\n"
+        "    except Exception as exc:\n"
+        "        return {'error': str(exc), 'hint': _HINT}\n"
+        "def via_local():\n"
+        "    try:\n"
+        "        pass\n"
+        "    except Exception as exc:\n"
+        "        payload = {'error': str(exc), 'hint': _HINT}\n"
+        "        return payload\n"
+    )
+    sites = list(_error_returns_in_server(server_dir=tmp_path, module=None))
+
+    assert len(sites) == 2, f"a returned local was not seen: {sites}"
+    assert all(is_dict for _ln, is_dict, *_ in sites)
+    assert all(has_hint for _ln, _d, has_hint, *_ in sites), "the hint constant must resolve"
+
+
+# ── the score file is a baseline, and a baseline must not shrink ────────────
+
+
+def test_a_partial_run_does_not_erase_metrics_it_did_not_measure(tmp_path):
+    """Running one measurement must not delete the other twelve.
+
+    ``pytest tests/eval/capability/test_x.py`` used to rewrite the whole file
+    with only what that selection collected. Running a single measurement across
+    the family cut all twelve baselines from thirteen metrics to three, and one
+    ``git add -A`` would have made it permanent — leaving the next release with
+    nothing to diff against, which is the corruption this file exists to prevent.
+    """
+    import json
+
+    from ..capability._scoring import Score, ScoreBoard
+
+    path = tmp_path / "_scores.json"
+
+    full = ScoreBoard()
+    full.add(Score(name="alpha", value=1, maximum=1))
+    full.add(Score(name="beta", value=1, maximum=2))
+    full.write(path)
+
+    partial = ScoreBoard()
+    partial.add(Score(name="alpha", value=2, maximum=2))
+    partial.write(path)
+
+    scores = json.loads(path.read_text())["scores"]
+    assert set(scores) == {"alpha", "beta"}, "a partial run deleted a metric"
+    assert scores["alpha"]["value"] == 2, "the fresh measurement must win"
+    assert not scores["alpha"].get("stale"), "a freshly measured metric is not stale"
+    assert scores["beta"]["stale"] is True, "a carried-over metric must say so"
+
+
+def test_an_empty_run_leaves_the_baseline_alone(tmp_path):
+    """No records at all means nothing was measured — not that all is gone."""
+    import json
+
+    from ..capability._scoring import Score, ScoreBoard
+
+    path = tmp_path / "_scores.json"
+    seeded = ScoreBoard()
+    seeded.add(Score(name="alpha", value=1, maximum=1))
+    seeded.write(path)
+
+    ScoreBoard().write(path)
+    assert set(json.loads(path.read_text())["scores"]) == {"alpha"}
+
+
 def test_credits_a_real_subcommand_under_a_group():
     assert _with_commands(f"Run '{CLI_NAME} pool members web-pool' to list them.")
 
