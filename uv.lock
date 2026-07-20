@@ -1195,7 +1195,7 @@ wheels = [
 
 [[package]]
 name = "vmware-monitor"
-version = "1.7.7"
+version = "1.8.3"
 source = { editable = "." }
 dependencies = [
     { name = "apscheduler" },
@@ -1226,7 +1226,7 @@ requires-dist = [
     { name = "pyvmomi", specifier = ">=8.0.3.0,<10.0" },
     { name = "rich", specifier = ">=13.0,<16.0" },
     { name = "typer", specifier = ">=0.12,<1.0" },
-    { name = "vmware-policy", specifier = ">=1.0.0,<2.0" },
+    { name = "vmware-policy", specifier = ">=1.8.1,<2.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -1238,13 +1238,14 @@ dev = [
 
 [[package]]
 name = "vmware-policy"
-version = "1.4.4"
+version = "1.8.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "pyyaml" },
     { name = "rich" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/82/28/3e00522a8c02ce64f5e9f073a588ab79751eef285390c825d22c0f8d1b9a/vmware_policy-1.4.4.tar.gz", hash = "sha256:634df859381f25265d262a08d35e0844609f81cbccecd0b23d2b46edeaf9f3d2", size = 23830, upload-time = "2026-04-01T15:47:52.155Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2c/20/c5695a03959b862b3366933bd02c81452e5dfedecbc64e148d04bf299e91/vmware_policy-1.8.3.tar.gz", hash = "sha256:9ce81039fdb8f614f60eae3ee2cc8a532f4b5a92a7de22fe9fec77f926a17070", size = 137308, upload-time = "2026-07-20T03:34:58.783Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/ec/7d62ae027c6a6d15c056c09d672669e4bec2219ad356be229f6b5b1bf93f/vmware_policy-1.4.4-py3-none-any.whl", hash = "sha256:17ce012b77bfd87ff97f54f2b31a14c0df8850bb954ecc31f8b5f58f7196fe71", size = 12357, upload-time = "2026-04-01T15:47:53.372Z" },
+    { url = "https://files.pythonhosted.org/packages/be/86/290e8c7078639695469ee1688cbcb6d74d8d53aeb856837f352911e86ff7/vmware_policy-1.8.3-py3-none-any.whl", hash = "sha256:9e941c6faee534f716b435aefe7743493cfa88c9e94756cb12999e7812af06c6", size = 51593, upload-time = "2026-07-20T03:34:57.043Z" },
 ]
