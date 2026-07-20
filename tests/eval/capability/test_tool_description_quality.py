@@ -27,7 +27,16 @@ The six dimensions, and why each one earns a point
                to expect an envelope, a scalar, or a bundle, and mis-parses.
 ``when``     — states when to prefer this tool, or names the tool to prefer
                instead. This is the routing signal; see above.
-``gotcha``   — states a caveat, bound, or failure mode.
+``gotcha``   — states a caveat, bound, or failure mode. **The noisiest of the
+               six, and the one to trust least.** It is keyword matching, and
+               ordinary phrasing collects the point by accident: a docstring
+               ending "Read-only." matches ``only``; an enum listing ``WARNING``
+               matches ``warning``; a tool whose job is to confirm something
+               matched ``confirm`` in its own first sentence until markers
+               appearing in the tool's own name were excluded. Three independent
+               reviewers flagged this within one pass. Read a high ``gotcha`` as
+               "nothing contradicts the claim", not as evidence the caveat is
+               there — and prefer sharpening this dimension over celebrating it.
 ``args``     — every schema property is named in the description text. Scored as
                a full point only when *all* are documented; partial credit is
                deliberately withheld because one undocumented parameter is
@@ -77,11 +86,18 @@ def _grade(tool, all_names: frozenset[str]) -> dict[str, bool]:
     stripped = desc.lstrip()
     documented, total = documented_args(desc, tool.inputSchema or {})
     others = all_names - {tool.name}
+    # A gotcha marker that is also a word in the tool's own name is describing
+    # what the tool does, not warning about it: `confirm_draft` earned the point
+    # for the word "confirm" in its own first sentence. Dropping the tool's own
+    # name tokens from the marker set is the narrowest fix that removes the free
+    # point without weakening the dimension for tools that really do warn.
+    own = {w for w in tool.name.lower().split("_") if w}
+    gotcha_markers = tuple(m for m in GOTCHA_MARKERS if m.strip() not in own)
     return {
         "marker": stripped.startswith("[READ]") or stripped.startswith("[WRITE]"),
         "what": has_any(desc, WHAT_MARKERS),
         "when": has_any(desc, WHEN_MARKERS),
-        "gotcha": has_any(desc, GOTCHA_MARKERS),
+        "gotcha": has_any(desc, gotcha_markers),
         "args": total == 0 or documented == total,
         "next_hop": any(name in desc for name in others),
     }

@@ -142,6 +142,14 @@ WHEN_MARKERS = (
     "drill into",
     "follow up",
     "then ",
+    # "Use after a storage array presents new LUNs" is a complete when-clause.
+    # Without these the rubric scored it zero, and the only way to earn the
+    # point was to reword it to "Use this when ..." — identical meaning, no
+    # information added. A rubric that pays for phrasing buys churn.
+    "use after",
+    "after ",
+    "once ",
+    "whenever ",
 )
 
 #: Phrases that signal the description stated what comes back.
@@ -186,7 +194,16 @@ GOTCHA_MARKERS = (
 
 
 def has_any(text: str, markers: tuple[str, ...]) -> bool:
-    low = text.lower()
+    """Does ``text`` contain any marker, ignoring how the source happens to wrap?
+
+    Whitespace is collapsed first. Markers carry trailing spaces (``"before "``,
+    ``"then "``), so a docstring that wrapped at exactly that word scored zero
+    for content it plainly contained -- ``"...check the rule count before\\n
+    deleting"`` missed ``"before "`` on a line break. Two of one skill's
+    forty-two apparent gaps were this, which means the rubric was reporting
+    formatting as absence and inviting a rewrite that changes nothing.
+    """
+    low = " ".join(text.lower().split())
     return any(m in low for m in markers)
 
 

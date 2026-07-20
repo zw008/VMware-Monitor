@@ -171,7 +171,15 @@ def _entry_points(tools) -> tuple:
 def _enumerated_entities(tool) -> tuple[str, ...]:
     """Entity tokens this tool plausibly enumerates, judged from its name."""
     name = tool.name.lower()
-    keywords = ("list", "scan", "browse", "summary", "attention", "info", "available", "members")
+    # `map` earns its place the hard way: vmware-avi's `ako_ingress_map` really
+    # does enumerate namespaces, but no keyword recognised it, so the only
+    # producer on that surface was invisible and the chain read as broken. A
+    # keyword list is a guess at naming convention; when a repo names a producer
+    # something else, the fix is to add the word, not to rename the tool.
+    keywords = (
+        "list", "scan", "browse", "summary", "attention", "info", "available",
+        "members", "map",
+    )
     if not any(k in name for k in keywords):
         return ()
     return tuple(e for e, words in ENTITY_WORDS.items() if any(w in name for w in words))

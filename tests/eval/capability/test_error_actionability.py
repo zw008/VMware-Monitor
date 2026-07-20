@@ -167,7 +167,6 @@ def _cli_commands() -> frozenset[str] | None:
     caller can report the check as unavailable instead of silently refuting every
     CLI reference — an unverifiable claim is not a refuted one.
     """
-    import click
     import typer
 
     for dotted, attr in ((f"{PACKAGE}.cli", "app"), (f"{PACKAGE}.cli._root", "app")):
@@ -184,7 +183,25 @@ def _cli_commands() -> frozenset[str] | None:
         paths: set[str] = set()
 
         def walk(cmd, prefix: list[str]) -> None:
-            if isinstance(cmd, click.Group):
+            # Duck-typed on `.commands` rather than `isinstance(cmd, click.Group)`.
+            # Newer Typer vendors its own click (`typer._click.core`), so its
+            # groups are not instances of the installed `click.Group` — and the
+            # family runs both versions. The isinstance form silently resolved
+            # zero commands in the two repos on the newer Typer, which made every
+            # CLI citation there "unverifiable" and therefore free.
+            subs = getattr(cmd, "commands", None)
+            if isinstance(subs, dict):
+                # A group can be runnable in its own right. Typer registers a
+                # sub-app with `@app.callback(invoke_without_command=True)`, and
+                # click then reports a Group with no subcommands — so recording
+                # only leaves lost seven of vmware-harden's nine commands and
+                # *refuted* messages citing them. A false refutation is the worse
+                # direction for this check: it calls a correct instruction a
+                # phantom.
+                if prefix and (
+                    getattr(cmd, "invoke_without_command", False) or not cmd.commands
+                ):
+                    paths.add(" ".join(prefix))
                 for name, sub in cmd.commands.items():
                     walk(sub, [*prefix, name])
             elif prefix:
@@ -498,6 +515,46 @@ def _truncation_budget() -> int | None:
     return min(caps) if caps else None
 
 
+def test_every_top_level_command_is_reachable_in_the_resolved_set():
+    """Cross-check the CLI map against click's own top-level listing.
+
+    ``_cli_commands`` decides whether a cited command is real, so a command it
+    fails to see is a correct instruction reported as a phantom — the worse of
+    the two error directions. It happened: sub-apps registered with
+    ``@app.callback(invoke_without_command=True)`` appear to click as groups with
+    no subcommands, and recording only leaves lost seven of one skill's nine
+    commands while confidently refuting messages that cited them.
+
+    Comparing against the authority rather than re-deriving from the same walk
+    is the point; a check that re-implements the thing it verifies agrees with
+    itself for free.
+    """
+    import typer
+
+    for dotted in (f"{PACKAGE}.cli", f"{PACKAGE}.cli._root"):
+        try:
+            app = getattr(importlib.import_module(dotted), "app", None)
+        except Exception:  # noqa: BLE001
+            continue
+        if app is None:
+            continue
+        root = typer.main.get_command(app)
+        subs = getattr(root, "commands", None)
+        if not isinstance(subs, dict):
+            pytest.skip("CLI is a single command, not a group")
+        declared = set(subs)
+        resolved = _cli_commands() or set()
+        unreachable = sorted(d for d in declared if not any(
+            p == d or p.startswith(f"{d} ") for p in resolved
+        ))
+        assert not unreachable, (
+            f"{len(unreachable)} top-level command(s) are invisible to the CLI "
+            f"check, so an error citing one is scored as a phantom: {unreachable}"
+        )
+        return
+    pytest.skip("no Typer app found to cross-check")
+
+
 def test_truncation_budget_matches_what_the_server_really_applies():
     """Cross-check the parsed cap against the wrapper's actual behaviour.
 
@@ -729,12 +786,35 @@ def _error_returns_in_server():
                     if isinstance(k, ast.Constant) and k.value == "hint":
                         hint = _resolve(v)
                 yield (node.lineno, True, bool(hint), hint, "items" in keys)
+            elif isinstance(value, ast.List) and len(value.elts) == 1 and isinstance(
+                value.elts[0], ast.Dict
+            ):
+                # `[{"error": ..., "hint": ...}]` — what `tool_errors(shape="list")`
+                # returns, and arguably the closest shape to issue #31's symptom:
+                # a failed call that reads as a one-row result page. The scan
+                # handled dicts and strings and skipped this entirely, so three
+                # of one skill's tools had no metric watching them at all.
+                inner = value.elts[0]
+                keys = {k.value for k in inner.keys if isinstance(k, ast.Constant)}
+                if "error" in keys:
+                    hint = ""
+                    for k, v in zip(inner.keys, inner.values):
+                        if isinstance(k, ast.Constant) and k.value == "hint":
+                            hint = _resolve(v)
+                    yield (node.lineno, True, bool(hint), hint, "items" in keys)
             elif isinstance(value, (ast.Constant, ast.JoinedStr)):
                 text = _resolve(value)
                 if text.lower().lstrip().startswith("error"):
-                    # `folded` carries a hint the renderer assembles before
-                    # returning; empty for handlers that inline their payload.
-                    yield (node.lineno, False, bool(folded), f"{text} {folded}".strip(), False)
+                    # `carries_hint` stays False for every string payload. A bare
+                    # string has no hint *field* — that is precisely why this
+                    # dimension exists — so crediting one because a renderer
+                    # assembled its text made the point earnable by hoisting an
+                    # f-string into a helper for a byte-identical payload. An
+                    # agent spotted that it could bank 16.7 points that way and
+                    # declined; the rubric should not have offered it. `folded`
+                    # still feeds the text, so the hint is visible to the
+                    # artifact check where it belongs.
+                    yield (node.lineno, False, False, f"{text} {folded}".strip(), False)
 
 
 def test_tool_failure_payloads_are_self_describing(board, names_artifact):
