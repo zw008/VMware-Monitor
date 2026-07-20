@@ -33,3 +33,32 @@ COMPANION_SKILLS = (
     "vmware-harden",
     "vmware-pilot",
 )
+
+#: Entity tokens this skill's tools name, mapped to the words its listing tools
+#: use. Drives ``test_entity_reachability``: a required parameter whose stem is
+#: not here is invisible to that eval, so an incomplete map understates the
+#: surface rather than failing — which is why the suite asserts coverage.
+ENTITY_WORDS = {
+    "vm": ("vm", "virtual_machine", "virtualmachine", "vms"),
+    "host": ("host", "esxi", "hosts"),
+    "datastore": ("datastore", "datastores", "ds"),
+    "cluster": ("cluster", "clusters"),
+    "network": ("network", "networks", "portgroup"),
+    "snapshot": ("snapshot", "snapshots"),
+    "image": ("image", "images", "ova", "iso", "template"),
+    "alarm": ("alarm", "alarms"),
+    "plan": ("plan", "plans"),
+}
+
+#: Skill-specific parameters that end in an entity suffix but are supplied by the
+#: operator rather than discovered from an API. Universal exclusions (``target``,
+#: paths, filters) live in the eval itself.
+NOT_AN_ENTITY = frozenset(
+    {
+        "folder_filter",
+        "cluster_filter",
+        "power_state",
+        "task_id",
+        "spec_name",
+    }
+)

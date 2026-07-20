@@ -58,7 +58,8 @@ from __future__ import annotations
 import pytest
 
 from ._scoring import Score
-from ._skill import COMPANION_SKILLS
+from ._skill import COMPANION_SKILLS, ENTITY_WORDS
+from ._skill import NOT_AN_ENTITY as SKILL_NOT_AN_ENTITY
 
 pytestmark = pytest.mark.capability
 
@@ -66,7 +67,11 @@ pytestmark = pytest.mark.capability
 #: ``target`` is excluded: it comes from the operator's own config.yaml, not from
 #: an API listing, and every description already points at config.
 ENTITY_SUFFIXES = ("_name", "_id", "_uuid", "_key")
-NOT_AN_ENTITY = frozenset(
+
+#: Exclusions true for every skill: these end in an entity suffix but are not
+#: things a model discovers from an API. ``target`` comes from the operator's own
+#: config.yaml; the rest are paths, filters and free text.
+GENERIC_NOT_AN_ENTITY = frozenset(
     {
         "target",
         "user_name",
@@ -78,27 +83,10 @@ NOT_AN_ENTITY = frozenset(
         "path",
         "sort_by",
         "fields",
-        "folder_filter",
-        "cluster_filter",
-        "power_state",
-        "task_id",
-        "spec_name",
     }
 )
 
-#: Entity tokens we can recognise, mapped to the words a listing tool uses.
-ENTITY_WORDS = {
-    "vm": ("vm", "virtual_machine", "virtualmachine", "vms"),
-    "host": ("host", "esxi", "hosts"),
-    "datastore": ("datastore", "datastores", "ds"),
-    "cluster": ("cluster", "clusters"),
-    "network": ("network", "networks", "portgroup"),
-    "snapshot": ("snapshot", "snapshots"),
-    "image": ("image", "images", "ova", "iso", "template"),
-    "alarm": ("alarm", "alarms"),
-    "plan": ("plan", "plans"),
-}
-
+NOT_AN_ENTITY = GENERIC_NOT_AN_ENTITY | SKILL_NOT_AN_ENTITY
 
 #: Verbs marking a tool that *creates* the thing its parameter names. The name of
 #: an object being created is chosen by the user, not discovered from an API, so
@@ -304,3 +292,37 @@ def test_every_surface_has_an_entry_point(board, tools, gated_tools):
     )
     assert full_entries, "no tool can be called without an entity name already in hand"
     assert gated_entries, "read-only mode left no callable entry point"
+
+
+def test_entity_vocabulary_covers_the_surface(tools):
+    """The vocabulary in ``_skill.py`` must classify every entity-shaped parameter.
+
+    Without this the suite degrades silently rather than loudly. An unrecognised
+    parameter is not counted as unreachable — it is not counted at all, so a
+    skill whose entities are missing from ``ENTITY_WORDS`` scores on the handful
+    it happens to recognise and reports that as the state of the whole surface.
+    A vSphere vocabulary applied to vmware-nsx would classify one stray
+    ``cluster_name``, miss twenty segment and gateway names, and print a
+    confident number derived from 5% of the tools.
+
+    Total non-coverage already fails (nothing recognised scores 0%). Partial
+    coverage is the dangerous case, and it is the normal case when this suite is
+    copied to a new skill. So: anything ending in an entity suffix must either
+    map to an entity token or be named as a deliberate exclusion.
+    """
+    unclassified: dict[str, list[str]] = {}
+    for tool in tools:
+        for param in (tool.inputSchema or {}).get("required", []) or []:
+            low = param.lower()
+            if low in NOT_AN_ENTITY or _entity_of(param, tool.name):
+                continue
+            if low == "name" or low.endswith(ENTITY_SUFFIXES):
+                unclassified.setdefault(param, []).append(tool.name)
+
+    assert not unclassified, (
+        "these required parameters look like entities but the vocabulary does not "
+        f"classify them: {unclassified}. Add each stem to ENTITY_WORDS in _skill.py "
+        "(so reachability is scored for it), or to NOT_AN_ENTITY (if the operator "
+        "supplies it rather than discovering it). Leaving them unclassified makes "
+        "every score in this file cover less of the surface than it claims to."
+    )
