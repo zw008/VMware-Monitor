@@ -67,7 +67,7 @@ class _Recorder:
 @pytest.fixture
 def audit(monkeypatch) -> _Recorder:
     recorder = _Recorder()
-    monkeypatch.setattr("vmware_policy.decorators.get_engine", lambda: recorder)
+    monkeypatch.setattr("vmware_policy.guard.get_engine", lambda: recorder)
     return recorder
 
 

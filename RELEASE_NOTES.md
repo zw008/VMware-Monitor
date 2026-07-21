@@ -1,3 +1,15 @@
+## v1.8.8 — test suite validated against the shipped Policy; docstring correction
+
+Two developer-facing fixes:
+- the `environment` config-field docstring now describes it accurately (an optional
+  label a `deny` rule may scope to; the "warn now / refuse next major" gate was
+  removed in 1.8.7)
+- the regression suite now runs against vmware-policy 1.8.x's current shape (a stale
+  test asserting the removed declared-environment enforcement is retired)
+
+No runtime behavior change; this read-only skill is unaffected by the family's CLI
+`@guarded` rollout.
+
 ## v1.8.7 (2026-07-21) — the skill-level read-only switch is removed; read/write authorization is the vCenter account's job (RBAC)
 
 ### Removed: `VMWARE_READ_ONLY` / `read_only:` — give the agent a read-only service account instead
