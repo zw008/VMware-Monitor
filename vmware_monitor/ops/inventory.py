@@ -145,6 +145,15 @@ def list_vms(
     ``hint`` carries the compact-mode suggestion when auto-compact fires; when a
     page is also truncated both notes are joined, so neither is lost.
 
+    .. deprecated:: 1.8.6
+       ``vms`` is a compatibility alias for ``items`` and will be removed in
+       2.0. Until v1.8.0 this function returned ``{total, mode, vms, hint}``;
+       the envelope renamed ``vms`` to ``items``, and because the payload was
+       already a keyed dict the break was silent — ``result.get("vms", [])``
+       started returning ``[]``, which in a monitoring tool reads as "no VMs"
+       rather than as a failure. Both keys are the *same* list object, so they
+       cannot drift. Migrate to ``items``.
+
     Auto-compact: when no explicit limit/fields are set and total VMs exceed
     compact_threshold (default 50), only compact fields are returned to keep
     context manageable. Use limit or fields to override.
@@ -226,13 +235,16 @@ def list_vms(
                 results = [{k: r[k] for k in keep if k in r} for r in results]
 
     envelope = paginated(results, limit=limit, total=total, mode=mode)
-    if compact_hint is None:
-        return envelope
-    # The envelope owns ``hint``. Compact mode only fires without an explicit
-    # limit, so a truncation hint should not coexist — join rather than assume,
-    # because dropping either note is a silent loss of guidance.
-    merged = f"{envelope['hint']} {compact_hint}" if envelope["hint"] else compact_hint
-    return {**envelope, "hint": merged}
+    if compact_hint is not None:
+        # The envelope owns ``hint``. Compact mode only fires without an explicit
+        # limit, so a truncation hint should not coexist — join rather than assume,
+        # because dropping either note is a silent loss of guidance.
+        merged = f"{envelope['hint']} {compact_hint}" if envelope["hint"] else compact_hint
+        envelope = {**envelope, "hint": merged}
+    # Deprecated alias for pre-v1.8.0 callers; removed in 2.0. It must be the
+    # same list object as ``items`` — a copy would let the two drift and turn
+    # one silent break into two.
+    return {**envelope, "vms": envelope["items"]}
 
 
 _HOST_PROPS = [

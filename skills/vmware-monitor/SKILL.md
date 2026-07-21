@@ -11,7 +11,7 @@ installer:
   package: vmware-monitor
 allowed-tools:
   - Bash
-metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmware-monitor"],"config":["~/.vmware-monitor/config.yaml","~/.vmware-monitor/.env"]},"optional":{"env":["VMWARE_TARGET_PASSWORD","VMWARE_<TARGET>_USERNAME","SLACK_WEBHOOK_URL","DISCORD_WEBHOOK_URL","VMWARE_READ_ONLY","VMWARE_MONITOR_READ_ONLY","VMWARE_AUDIT_APPROVED_BY"],"bins":["vmware-policy"]},"primaryEnv":"VMWARE_MONITOR_CONFIG","homepage":"https://github.com/zw008/VMware-Monitor","emoji":"📊","os":["macos","linux"]}}
+metadata: {"openclaw":{"requires":{"env":["VMWARE_MONITOR_CONFIG"],"bins":["vmware-monitor"],"config":["~/.vmware-monitor/config.yaml","~/.vmware-monitor/.env"]},"optional":{"env":["VMWARE_TARGET_PASSWORD","VMWARE_<TARGET>_USERNAME","SLACK_WEBHOOK_URL","DISCORD_WEBHOOK_URL","VMWARE_AUDIT_APPROVED_BY"],"bins":["vmware-policy"]},"primaryEnv":"VMWARE_MONITOR_CONFIG","homepage":"https://github.com/zw008/VMware-Monitor","emoji":"📊","os":["macos","linux"]}}
 compatibility: >
   vmware-policy auto-installed as Python dependency (provides @vmware_tool decorator and audit logging). All operations audited to ~/.vmware/audit.db.
   Credentials: Each vCenter/ESXi target requires a per-target password env var in ~/.vmware-monitor/.env following the pattern VMWARE_<TARGET_NAME_UPPER>_PASSWORD (e.g., target "vcenter-prod" → VMWARE_VCENTER_PROD_PASSWORD). SLACK_WEBHOOK_URL and DISCORD_WEBHOOK_URL are optional — disabled by default, user-configured only, used solely by the opt-in daemon scanner. Daemon: the background scanner (vmware-monitor daemon start) is user-initiated only, never auto-started. Webhook payloads contain only aggregated alert metadata (alarm counts, event types) — no credentials, IPs, or PII.
@@ -203,15 +203,11 @@ failed". A `null` `total` (`get_events`, `host_log_scan`) is deliberate.
 Aggregate tools return purpose-built objects instead — field table and
 example payload: `references/capabilities.md`.
 
-## Read-Only Mode
+## Read-Only by Design
 
-All 27 tools here are reads, so read-only mode withholds nothing — but
-`VMWARE_READ_ONLY=true` (or `VMWARE_MONITOR_READ_ONLY`, or `read_only: true` in
-config.yaml) still applies, and the gate verifies at start-up that zero write
-tools are exposed rather than taking this document's word for it. The same
-variable withholds write tools across every companion skill, so a whole-estate
-audit posture is one setting. `vmware-monitor doctor` reports the current state
-and its source. Running with local or small models? See [`references/agent-guardrails.md`](references/agent-guardrails.md).
+All 27 tools here are reads — there is no write, create, or delete surface at
+all. Running with local or small models? See
+[`references/agent-guardrails.md`](references/agent-guardrails.md).
 
 ## CLI Quick Reference
 
@@ -264,15 +260,14 @@ VMware Tools not installed or not running in the guest. Install/start VMware Too
 vCenter may be under heavy load. Try targeting a specific ESXi host directly instead of vCenter, or increase connection timeout in config.yaml.
 
 ### Should I set `environment:` on a read-only skill?
-Yes — add `environment: production` (or `staging`, `lab`, your own label) to
-each target in `~/.vmware-monitor/config.yaml`. Policy scopes its rules by
-declared environment, not target name; this skill has zero write tools, so
-**no monitor command is ever refused or delayed by this** — reads are never
-gated. It matters for the write skills (`vmware-aiops`, `vmware-storage`,
-`vmware-nsx`) pointed at the same vCenter: an undeclared target warns on every
-write today and is refused in the next major release. A consistent label
-across the family's config files makes that upgrade a no-op. Config example:
-`references/setup-guide.md`.
+You can — add `environment: production` (or `staging`, `lab`, your own label)
+to each target in `~/.vmware-monitor/config.yaml`. It's an optional label; this
+skill has zero write tools, so nothing it exposes is ever gated by it — reads
+are never gated. It matters for the write skills (`vmware-aiops`,
+`vmware-storage`, `vmware-nsx`) pointed at the same vCenter: an
+environment-scoped `deny` rule in `~/.vmware/rules.yaml` can match on the label
+to block their writes (e.g. freeze `production`). A target with no label is
+simply not matched by such a rule. Config example: `references/setup-guide.md`.
 
 ## Setup
 

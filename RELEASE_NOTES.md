@@ -1,3 +1,71 @@
+## v1.8.7 (2026-07-21) — the skill-level read-only switch is removed; read/write authorization is the vCenter account's job (RBAC)
+
+### Removed: `VMWARE_READ_ONLY` / `read_only:` — give the agent a read-only service account instead
+
+The skill-level read-only switch is gone. It was enforced only on the MCP tool
+registry, and any agent with a shell (every SKILL.md grants `allowed-tools: Bash`)
+could reach the same change one CLI command away — so it withheld the *tool*, not
+the *capability*. It was never a real boundary.
+
+To run an agent read-only, give it a **read-only vCenter/NSX service account
+(RBAC)**. Writes are then refused at the platform, un-bypassably, regardless of
+surface or shell — the one place read/write control cannot be stepped around. A
+config still carrying `read_only: true` is ignored, with a one-time warning that
+names the replacement (no silent behavior change).
+
+### Removed: approval tiers and the declared-environment gate (via vmware-policy)
+
+The graduated-autonomy approval tiers (`confirm`/`dual`/`review`) and the "declare
+an environment or be refused" baseline are removed — they only ever fired on the
+rarest configuration while carrying the family's most complex machinery. Opt-in
+`deny` rules and the maintenance window remain, and apply identically wherever a
+tool runs.
+
+### Added: offline / air-gapped install docs
+
+The README now covers installing from source without editable mode (for older
+`pip`) and building wheels to carry onto an air-gapped host — the modern PEP 517
+layout has no `setup.py` by design, which is expected, not a missing file.
+
+This release also carries the accumulated fixes staged since 1.8.5.
+
+## v1.8.6 (unreleased) — `vms` comes back as a deprecated alias
+
+### Fixed — a v1.8.0 rename that broke callers without telling them
+
+v1.8.0 said every `[READ]` list tool now returns the family envelope "instead of
+a bare array". For `list_virtual_machines` that was not true: it had returned a
+keyed dict, `{total, mode, vms, hint}`, and the conversion renamed `vms` to
+`items`.
+
+The distinction matters because it decides whether you find out. Replacing a
+bare array with a dict breaks loudly — `result[0]` raises. Renaming a key inside
+a dict that was already there breaks quietly: `result.get("vms", [])` kept
+returning a value, just always `[]`. **In a monitoring tool an empty VM list
+does not read as an error. It reads as "there are no VMs."**
+
+The v1.8.0 notes made this worse rather than surfacing it. A reader who used
+`list_virtual_machines`, checked the sentence, saw that their payload was a
+keyed dict and not a bare array, would correctly conclude the described change
+was not theirs — and ship the bug. The v1.8.0 entry below now carries a
+correction saying so explicitly.
+
+**`vms` is restored as a deprecated alias**, pointing at the *same list object*
+as `items` rather than a copy, so the two cannot drift. `items` remains the
+primary key and the documented one. **`vms` is removed in 2.0** — migrate.
+
+Pinned by `tests/eval/regression/test_deprecated_key_aliases.py`, which asserts
+a pre-v1.8.0 caller still sees its VMs, that the alias is the same object
+(verified by mutating one and reading the other), and that it survives both
+truncation and auto-compact — auto-compact rebuilds the row list, so an alias
+captured too early would point at the discarded full-field rows.
+
+Three sibling skills shipped the same shape and are fixed in the same release:
+`list_tkc_clusters` and `list_namespace_storage_usage` in vmware-vks, and
+`list_vm_tags` in vmware-nsx-security.
+
+---
+
 ## v1.8.5 (2026-07-20) — the two fixes v1.8.4 announced now actually work
 
 Four adversarial reviews of v1.8.4 found that both of its headline fixes were
@@ -320,6 +388,40 @@ This closes the reported failure where long responses were summarised as "no dat
 returned": a bare list gives a model no way to tell a complete answer from page one, so
 it guessed. `truncated: false` now positively states completeness — including when
 `items` is empty, which means "checked, found none", not "the call failed".
+
+> **Correction (v1.8.6).** The sentence "instead of a bare array" above is true
+> of most tools converted family-wide, and false of exactly four. One of them
+> is in this repo.
+>
+> (The four were established by an AST key-loss diff over every returning
+> function in all twelve repos, mutation-verified in both directions. The
+> total converted count is not restated here because it was never verified to
+> the same standard — and a correction is the wrong place for a number
+> nobody checked.)
+>
+> **`list_virtual_machines` (ops: `list_vms`) was never a bare array.** Before
+> v1.8.0 it returned a keyed dict — `{total, mode, vms, hint}` — and the
+> conversion renamed `vms` to `items`. That is a different kind of break from
+> the other 51. A bare-array caller doing `result[0]` gets an immediate
+> `KeyError` on a dict and finds out at once; a caller doing
+> `result.get("vms", [])` kept running and silently saw zero VMs. In a
+> monitoring tool an empty VM list does not read as a failure — it reads as
+> "there are no VMs".
+>
+> If you read this section when v1.8.0 shipped, checked `list_virtual_machines`,
+> saw a keyed dict and concluded the change did not apply to you: it did. The
+> count in the bullet below is the tell — 19 tools are listed as converted, but
+> 20 ops functions return the envelope. `list_vms` is the one missing from the
+> count, and it was left out of the prose for the same reason.
+>
+> **v1.8.6 restores `vms`** as a deprecated alias pointing at the *same list
+> object* as `items` (not a copy — copies drift). It is removed in 2.0. Migrate
+> to `items`.
+>
+> The other three, for anyone running more of the family: `list_tkc_clusters`
+> (`clusters` → `items`) and `list_namespace_storage_usage` (`pvcs` → `items`,
+> `pvc_count` deleted outright) in vmware-vks, and `list_vm_tags`
+> (`tags` → `items`) in vmware-nsx-security.
 
 - **19 tool(s) converted** across ops, MCP and CLI. 17 of 19 report a real `total` (the collection is enumerated, then sliced).
   `get_events` and `host_log_scan` deliberately report `total: null` — vCenter's event

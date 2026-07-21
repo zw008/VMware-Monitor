@@ -31,7 +31,6 @@ from typing import Any, Callable, Optional
 # MCP SDK — Model Context Protocol server framework
 from mcp.server.fastmcp import FastMCP
 from vmware_policy import (
-    apply_read_only_gate,
     mtime_cached_loader,
     sanitize,
     set_environment_resolver,
@@ -227,7 +226,8 @@ def list_virtual_machines(
     Returns the family list envelope {items, returned, limit, total, truncated,
     hint}; ``total`` is the real post-filter count, so read ``truncated`` before
     summarising. Over 50 VMs with no limit/fields, only the first five fields
-    below come back (``mode`` says which).
+    below come back (``mode`` says which). ``vms`` is a deprecated pre-1.8.0
+    alias of ``items``, removed in 2.0 — read ``items``.
 
     Use this to resolve an exact VM name, then vm_info for detail or
     vm_investigation_bundle to drill into one; for a fleet-wide view start at
@@ -1173,42 +1173,6 @@ def active_sessions(
     """
     si = _get_connection(target)
     return get_active_sessions(si, limit=limit)
-
-
-# ---------------------------------------------------------------------------
-# Read-only gate
-# ---------------------------------------------------------------------------
-
-
-def _config_read_only() -> Optional[bool]:
-    """Best-effort read of ``read_only`` from the config file.
-
-    Runs at import time, when no config file need exist yet (tests, ``--help``,
-    smoke checks), so every failure degrades to "not configured" and lets the
-    env vars decide. None and False are equivalent here — config is the last
-    link in the precedence chain — but None keeps 'not configured'
-    distinguishable from 'configured off' in logs and debugging.
-
-    Resolved through the same VMWARE_MONITOR_CONFIG override the connection layer
-    uses. Reading the default path instead would silently ignore settings in an
-    operator's custom config file — a control that appears configured and does
-    nothing, which is the exact failure this work exists to remove.
-    """
-    try:
-        _cfg_path = os.environ.get("VMWARE_MONITOR_CONFIG")
-        return load_config(Path(_cfg_path) if _cfg_path else None).read_only
-    except Exception:  # noqa: BLE001 — absent/unreadable config is not an error here
-        return None
-
-
-# Applied once, after every tool above has registered. This skill is read-only
-# by design — every tool is marked [READ], so the gate has nothing to remove.
-# It is wired up anyway for interface consistency with the rest of the family,
-# and so that "zero write tools" stays provable rather than merely documented
-# (issue #31).
-WITHHELD_WRITE_TOOLS: list[str] = apply_read_only_gate(
-    mcp, "vmware-monitor", config_flag=_config_read_only()
-)
 
 
 # ---------------------------------------------------------------------------

@@ -8,8 +8,6 @@
 
 **只读** VMware vCenter/ESXi 监控 — 27 个工具，代码级安全保障。代码库中不存在任何破坏性操作。
 
-- **设计即只读 —— 且可验证**（v1.8.0）：全部 27 个 MCP 工具均为读工具、写工具数为 0；设置 `VMWARE_READ_ONLY=true` 后，家族只读闸门会在启动时实际验证这一点，而不是让你只信 README 的一句声明。详见[只读模式](#只读模式)。
-
 > **为什么独立仓库？** VMware Monitor 完全独立于 [VMware-AIops](https://github.com/zw008/VMware-AIops)。安全性在**代码级别**保障：代码库中不存在关机、删除、创建、调整配置、快照创建/恢复/删除、克隆、迁移等函数。不仅仅是提示词约束 — 而是零破坏性代码路径。
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-vmware--monitor-orange)](https://clawhub.ai/skills/vmware-monitor)
@@ -170,31 +168,6 @@ ESXi 独立主机 ──→ VM
 需要这些操作请使用 [VMware-AIops](https://github.com/zw008/VMware-AIops)。
 
 ---
-
-## 只读模式
-
-vmware-monitor 在设计上就是只读的——全部 27 个 MCP 工具都带 `[READ]` 标记，写工具数为 0，本就没有可关闭的写入面。v1.8.0 新增的是**可验证性**：设置 `VMWARE_READ_ONLY=true`，家族只读闸门会在启动时枚举工具注册表，验证暴露的写工具数确实为零。"无破坏性"不再只是本 README 里的一句声明，而是服务器在处理第一个请求之前就自查过的断言。
-
-它最大的价值是防回归。闸门把"无法证明是只读"的工具一律判为写工具——日后新增的工具若漏标 `[READ]`，或带了 `[WRITE]`，会被直接从注册表移除，而不是悄悄被模型继承。默认关闭；且为 fail-closed 设计：请求了只读模式但无法保证时（注册表不可读、`mcp` 版本异常），服务器直接拒绝启动，而不是敞着口继续跑。
-
-```json
-{
-  "mcpServers": {
-    "vmware-monitor": {
-      "command": "vmware-monitor",
-      "args": ["mcp"],
-      "env": { "VMWARE_READ_ONLY": "true" }
-    }
-  }
-}
-```
-
-- 按 skill 覆盖：`VMWARE_MONITOR_READ_ONLY=true`（优先于家族级 `VMWARE_READ_ONLY`）
-- 配置文件方式：在 `~/.vmware-monitor/config.yaml` 中设置 `read_only: true`
-
-优先级：按 skill 环境变量 → 家族环境变量 → 配置文件 → 默认关闭。
-
-`VMWARE_READ_ONLY` 是家族级变量——这也正是本 skill 明明无工具可剥离、却仍值得设置它的原因：同一个变量会从具备写能力的兄弟仓（aiops、storage、vks、nsx 等）移除全部写工具，一处设置即可让整个环境进入审计姿态。本服务器的启动日志不会列出任何被移除的工具，因为确实一个都没有——闸门返回空结果本身就是那个断言；具备写能力的兄弟仓则会输出 `Read-only mode active ... withheld N write tool(s)`。
 
 使用本地/小模型运行？参见 [`skills/vmware-monitor/references/agent-guardrails.md`](skills/vmware-monitor/references/agent-guardrails.md)。
 

@@ -26,49 +26,12 @@ These are structural, so it cannot.
 
 | Guardrail you would otherwise prompt for | Now enforced by |
 |---|---|
-| "Work exclusively in read-only mode and never modify anything" | **Read-only mode.** Set `VMWARE_READ_ONLY=true` and every write tool is removed from the registry at startup. `list_tools()` never offers them, so the model cannot call what it cannot see. |
+| "Work read-only and never modify anything" | **Zero write tools.** This skill has no create, modify, delete, or power operation in its registry at all — `list_tools()` only ever offers reads, so the model cannot call what does not exist. |
 | "First resolve the affected resource_id through vmware-aria before querying vmware-monitor" | **`investigate_alert`** does the whole alert → resource → confirmed-name sequence in one call. |
 | "Do not confuse the alert ID with the affected resource ID" | `investigate_alert` returns a `correlation` block with both UUIDs explicitly labelled. |
 | "Only correlate Aria and vCenter data after the resource name and type have been confirmed" | `investigate_alert` returns `correlation.confirmed`, and withholds its `next_step` handoff until name and kind are known. |
 | "Use explicit limits for queries that may return large amounts of data" | **The list envelope.** Every list tool returns `{items, returned, limit, total, truncated, hint}`, so the model reads truncation instead of guessing at it. Most tools are unlimited unless you pass `limit` (`vm_performance` defaults to 25); the envelope states which case you got. |
 | "If a requested field was not returned by any tool, show it as not available" | Tools return explicit `null` for unresolved fields rather than omitting the key. |
-
-### Turning read-only mode on
-
-One variable covers every skill in the family:
-
-```json
-{
-  "mcpServers": {
-    "vmware-monitor": {
-      "command": "vmware-monitor",
-      "args": ["mcp"],
-      "env": { "VMWARE_READ_ONLY": "true" }
-    }
-  }
-}
-```
-
-Per-skill override — useful when one skill should stay writable:
-
-```bash
-VMWARE_READ_ONLY=true          # whole family read-only
-VMWARE_AIOPS_READ_ONLY=false   # …except VM lifecycle
-```
-
-Or permanently, in `~/.vmware-monitor/config.yaml`:
-
-```yaml
-read_only: true
-```
-
-Precedence is per-skill env → family env → config file → off. The startup log
-lists exactly which tools were withheld. An unparseable value (`VMWARE_READ_ONLY=ture`)
-enables read-only mode rather than silently ignoring the typo.
-
-`vmware-monitor` is read-only by design, so the gate withholds nothing there —
-it is worth setting anyway, because it makes the guarantee provable rather than
-merely documented, and one variable covers the write-capable skills alongside it.
 
 ---
 

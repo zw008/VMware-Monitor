@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import os
 import stat
-from pathlib import Path
 from typing import Callable
 
 from rich.console import Console
@@ -136,50 +134,6 @@ def _check_mcp_server() -> tuple[bool, str]:
         return False, f"MCP server import failed: {e}"
 
 
-def _config_read_only() -> bool | None:
-    """Read ``read_only`` from config, mirroring ``vmware_monitor.mcp_server.server``.
-
-    Duplicated rather than imported because importing the server module would
-    register every tool and run the gate as a side effect of ``doctor``. The
-    precedence chain around this value is *not* duplicated — see below.
-    """
-    try:
-        from vmware_monitor.config import load_config
-
-        _cfg_path = os.environ.get("VMWARE_MONITOR_CONFIG")
-        return load_config(Path(_cfg_path) if _cfg_path else None).read_only
-    except Exception:  # noqa: BLE001 — absent/unreadable config is not an error here
-        return None
-
-
-def _check_read_only() -> tuple[bool, str]:
-    """Report the resolved read-only state and where it came from.
-
-    Never fails — read-only being on is a posture, not a fault. It is here
-    because an operator who set the switch had no way to confirm it took: the
-    only signal was a line in the MCP server's start-up log.
-
-    The precedence chain lives in vmware-policy so this check and the gate that
-    actually enforces it cannot drift apart (a doctor that disagrees with the
-    gate is worse than no doctor).
-    """
-    from vmware_policy.readonly import read_only_status
-
-    status = read_only_status("vmware-monitor", _config_read_only())
-    if not status.recognised:
-        return True, (
-            f"{status.source}={status.raw!r} is not a recognised value. It resolves "
-            f"to ON (fail-closed). No write tools exist here to withhold, but the "
-            f"same value locks down every companion skill. Use true or false."
-        )
-    if status.enabled:
-        return True, (
-            f"ON (from {status.source}) — no write tools exist here; the gate "
-            f"verifies that at start-up. Companion skills withhold theirs."
-        )
-    return True, f"off (from {status.source}) — this skill is read-only either way"
-
-
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -192,7 +146,6 @@ _CHECKS: list[tuple[str, Callable[[], tuple[bool, str]]]] = [
     ("vSphere authentication", _check_auth),
     ("Scanner daemon", _check_daemon),
     ("MCP server", _check_mcp_server),
-    ("Read-only mode", _check_read_only),
 ]
 
 

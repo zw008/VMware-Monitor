@@ -9,8 +9,6 @@ English | [中文](README-CN.md)
 
 **Read-only** VMware vCenter/ESXi monitoring — 27 tools, code-level safety. No destructive operations exist in this codebase.
 
-- **Read-only by design — and provable** (v1.8.0): all 27 MCP tools are read and there are 0 writes; with `VMWARE_READ_ONLY=true` the family read-only gate verifies that at startup instead of taking this README's word for it. See [Read-Only Mode](#read-only-mode).
-
 > **Why a separate repository?** VMware Monitor is fully independent from [VMware-AIops](https://github.com/zw008/VMware-AIops). Safety is enforced at the **code level**: no power off, delete, create, reconfigure, snapshot-create/revert/delete, clone, or migrate functions exist in this codebase. Not just prompt constraints — zero destructive code paths.
 
 [![ClawHub](https://img.shields.io/badge/ClawHub-vmware--monitor-orange)](https://clawhub.ai/skills/vmware-monitor)
@@ -79,6 +77,34 @@ pip install vmware-monitor
 
 # China mainland mirror (faster)
 pip install vmware-monitor -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+### Offline / Air-Gapped Install (from source)
+
+This project uses the modern PEP 517 build system (hatchling), so there is **no
+`setup.py`** by design — that is expected, not a missing file. If you cloned the
+source and hit `ERROR: File "setup.py" or "setup.cfg" not found ... editable mode
+currently requires a setuptools-based build`, your `pip` is older than 21.3 and
+cannot do an *editable* (`-e`) install with a non-setuptools backend. Editable
+mode is a developer convenience, not needed to run the tool — do one of:
+
+```bash
+# From the source tree — a normal (non-editable) install builds a wheel:
+pip install .              # NOT  pip install -e .
+
+# ...or upgrade pip first, and editable works too:
+pip install --upgrade pip && pip install -e .
+```
+
+For a **truly air-gapped host**, build the wheels on a connected machine and copy
+them over — the target then needs no network:
+
+```bash
+# On a connected machine, collect this package + its dependencies as wheels:
+pip wheel . -w dist        # → dist/*.whl   (or: uv build, for just this package)
+
+# Copy dist/ to the air-gapped host, then install offline:
+pip install --no-index --find-links dist vmware-monitor
 ```
 
 ---
@@ -191,31 +217,6 @@ These operations **do not exist** in this repository:
 For these operations, use the full [VMware-AIops](https://github.com/zw008/VMware-AIops) repository.
 
 ---
-
-## Read-Only Mode
-
-vmware-monitor is read-only by design — all 27 MCP tools carry the `[READ]` marker and there are 0 write tools, so there is no write surface to switch off. What v1.8.0 adds is **proof**: set `VMWARE_READ_ONLY=true` and the family read-only gate enumerates the tool registry at startup and verifies that zero write tools are exposed. "Non-destructive" stops being a claim in this README and becomes an assertion the server checks before it serves a single request.
-
-That matters most as a regression guard. The gate treats anything not provably read-only as a write — a tool added later without a `[READ]` marker, or one carrying `[WRITE]`, is removed from the registry rather than quietly inherited by the model. Off by default, and fail-closed: if the mode is requested but cannot be guaranteed (unreadable registry, unexpected `mcp` version), the server refuses to start rather than running open.
-
-```json
-{
-  "mcpServers": {
-    "vmware-monitor": {
-      "command": "vmware-monitor",
-      "args": ["mcp"],
-      "env": { "VMWARE_READ_ONLY": "true" }
-    }
-  }
-}
-```
-
-- Per-skill override: `VMWARE_MONITOR_READ_ONLY=true` (takes precedence over the family-wide `VMWARE_READ_ONLY`)
-- Config alternative: `read_only: true` in `~/.vmware-monitor/config.yaml`
-
-Precedence: per-skill env → family env → config → off.
-
-`VMWARE_READ_ONLY` is family-wide, and that is the point of setting it here even though this skill has nothing to strip: the same variable removes every write tool from the write-capable siblings (aiops, storage, vks, nsx, ...), so one setting puts the whole estate into an audit posture. On this server nothing is logged as withheld because nothing is — the gate's empty result *is* the assertion; write-capable siblings log `Read-only mode active ... withheld N write tool(s)` instead.
 
 Running with local or small models? See [`skills/vmware-monitor/references/agent-guardrails.md`](skills/vmware-monitor/references/agent-guardrails.md).
 
