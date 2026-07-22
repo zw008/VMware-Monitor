@@ -303,6 +303,7 @@ The vmware-monitor MCP server works with **any MCP-compatible agent or tool**. R
 
 | Agent / Tool | Local Model Support | Config Template | Integration Guide |
 |-------------|:-------------------:|-----------------|-------------------|
+| **[Xiaoguai (小怪)](https://github.com/xiaoguai-agent/xiaoguai)** | ✅ Self-hosted, any LLM | [MCP setup](https://github.com/xiaoguai-agent/xiaoguai/blob/main/docs/book/src/api/mcp.md) | [Guide](https://github.com/xiaoguai-agent/xiaoguai) |
 | **[Goose](https://github.com/block/goose)** | ✅ Ollama, LM Studio | [`goose.json`](examples/mcp-configs/goose.json) | [Guide](docs/integrations/goose.md) |
 | **[LocalCowork](https://github.com/Liquid4All/localcowork)** | ✅ Fully offline | [`localcowork.json`](examples/mcp-configs/localcowork.json) | [Guide](docs/integrations/localcowork.md) |
 | **[mcp-agent](https://github.com/lastmile-ai/mcp-agent)** | ✅ Ollama, vLLM | [`mcp-agent.yaml`](examples/mcp-configs/mcp-agent.yaml) | [Guide](docs/integrations/mcp-agent.md) |
@@ -310,6 +311,8 @@ The vmware-monitor MCP server works with **any MCP-compatible agent or tool**. R
 | **Cursor** | — | [`cursor.json`](examples/mcp-configs/cursor.json) | — |
 | **Continue** | ✅ Ollama | [`continue.yaml`](examples/mcp-configs/continue.yaml) | [Guide](docs/integrations/continue.md) |
 | **Claude Code** | — | [`claude-code.json`](examples/mcp-configs/claude-code.json) | — |
+
+> **[Xiaoguai (小怪)](https://github.com/xiaoguai-agent/xiaoguai)** — a self-hostable, audit-first agent platform (Rust, single binary + embedded SQLite) from the same maintainer. It runs the read-only vmware-monitor MCP server as one of its toolboxes; being both an MCP *consumer* and an MCP *server*, its HMAC-chained audit log pairs naturally with this skill's code-level read-only guarantee — every query is logged, nothing mutates. See its [MCP integration guide](https://github.com/xiaoguai-agent/xiaoguai/blob/main/docs/book/src/api/mcp.md).
 
 **Fully local operation** (no cloud API required):
 
